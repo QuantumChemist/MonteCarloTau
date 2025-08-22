@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+electron-app/dist/
+pythonapi/build/
+pythonapi/*.egg-info/
+bin/
+*.exe
+msys64/

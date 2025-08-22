@@ -1,0 +1,13 @@
+{
+  "name": "montecarlo-tau-electron",
+  "version": "0.1.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "tsc -p ."
+  },
+  "devDependencies": {
+    "electron": "^26.0.0",
+    "typescript": "^5.0.0"
+  }
+}

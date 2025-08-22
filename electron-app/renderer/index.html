@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Monte Carlo Tau</title>
+    <style>
+      body { font-family: sans-serif; }
+      canvas { border: 1px solid #ccc; }
+    </style>
+  </head>
+  <body>
+    <h1>Monte Carlo Tau Visualizer</h1>
+    <div>Estimate: <span id="estimate">-</span></div>
+    <canvas id="c" width="400" height="400"></canvas>
+    <script>
+      const canvas = document.getElementById('c');
+      const ctx = canvas.getContext('2d');
+      const estimateEl = document.getElementById('estimate');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      // draw unit circle
+      ctx.beginPath();
+      ctx.arc(200,200,200,0,Math.PI*2);
+      ctx.strokeStyle = '#000';
+      ctx.stroke();
+
+      const evtSource = new EventSource('http://127.0.0.1:5000/stream');
+      evtSource.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        estimateEl.textContent = data.tau.toFixed(6);
+        // draw points
+        data.points.forEach(p => {
+          const x = Math.floor(p[0]*400);
+          const y = Math.floor(p[1]*400);
+          const inside = p[0]*p[0] + p[1]*p[1] <= 1.0;
+          ctx.fillStyle = inside ? 'green' : 'red';
+          ctx.fillRect(x, y, 2, 2);
+        });
+      };
+    </script>
+  </body>
+ </html>
