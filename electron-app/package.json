@@ -4,10 +4,12 @@
   "main": "dist/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "tsc -p ."
+    "build": "tsc -p . && npm run copy-renderer",
+    "copy-renderer": "cpx \"src/renderer/**\" dist/renderer"
   },
   "devDependencies": {
     "electron": "^26.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "cpx": "^1.5.0"
   }
 }
