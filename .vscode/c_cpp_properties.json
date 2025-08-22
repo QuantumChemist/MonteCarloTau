@@ -8,7 +8,10 @@
       "cppStandard": "c++17",
       "includePath": [
         "${workspaceFolder}/**",
-        "C:/msys64/mingw64/include"
+        "C:/msys64/mingw64/include",
+        "C:/Program Files/WindowsApps/PythonSoftwareFoundation.Python.3.13_3.13.2032.0_x64__qbz5n2kfra8p0/Include",
+        "C:/Program Files/WindowsApps/PythonSoftwareFoundation.Python.3.13_3.13.2032.0_x64__qbz5n2kfra8p0/Include",
+        "C:/Users/czitl/Documents/git/MonteCarloTau/pythonapi/.venv/Lib/site-packages/pybind11/include"
       ]
     }
   ],
