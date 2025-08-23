@@ -6,7 +6,7 @@ import os
 import subprocess
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-GENERATOR_BIN = os.path.join(ROOT, 'bin', 'generator.exe')
+GENERATOR_BIN = os.path.join(ROOT, 'bin', 'montecarlo.exe')
 
 app = Flask(__name__)
 
