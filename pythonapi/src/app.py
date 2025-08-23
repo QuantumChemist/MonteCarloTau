@@ -44,8 +44,8 @@ def event_stream(stop_event, batch_size=100):
             pts = []
             c = 0
             for _ in range(batch_size):
-                x = random.random()
-                y = random.random()
+                x = random.uniform(-1, 1)
+                y = random.uniform(-1, 1)
                 pts.append([x, y])
                 if x*x + y*y <= 1.0:
                     c += 1
