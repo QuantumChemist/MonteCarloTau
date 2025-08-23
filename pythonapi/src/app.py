@@ -26,6 +26,7 @@ def event_stream(stop_event, batch_size=100):
         if montecpp:
             # call C++ function to generate a batch
             pts, c, t = montecpp.generate_batch(batch_size)
+            engine = 'pybind'
         elif os.path.exists(GENERATOR_BIN):
             # call the CLI generator; it will print JSON to stdout
             try:
@@ -34,6 +35,7 @@ def event_stream(stop_event, batch_size=100):
                 pts = j.get('points', [])
                 c = j.get('circle', 0)
                 t = j.get('total', batch_size)
+                engine = 'cli'
             except Exception:
                 pts = []
                 c = 0
@@ -50,6 +52,7 @@ def event_stream(stop_event, batch_size=100):
                 if x*x + y*y <= 1.0:
                     c += 1
             t = batch_size
+            engine = 'python'
 
         circle += c
         total += t
@@ -60,8 +63,14 @@ def event_stream(stop_event, batch_size=100):
             'circle': circle,
             'total': total,
             'pi': pi_est,
-            'tau': tau_est
+            'tau': tau_est,
+            'engine': engine
         }
+        # log which engine produced the payload (useful for testing)
+        try:
+            app.logger.info('engine=%s circle=%d total=%d pi=%s', engine, circle, pi_est)
+        except Exception:
+            pass
         yield f"data: {json.dumps(payload)}\n\n"
         time.sleep(0.05)
 
