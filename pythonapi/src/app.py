@@ -2,12 +2,6 @@ from flask import Flask, Response, request, jsonify
 import json
 import threading
 import time
-
-# Import C++ module (will be built via pybind11)
-try:
-    import montecpp
-except Exception:
-    montecpp = None
 import os
 import subprocess
 
@@ -23,11 +17,7 @@ def event_stream(stop_event, batch_size=100):
     circle = 0
     total = 0
     while not stop_event.is_set():
-        if montecpp:
-            # call C++ function to generate a batch
-            pts, c, t = montecpp.generate_batch(batch_size)
-            engine = 'pybind'
-        elif os.path.exists(GENERATOR_BIN):
+        if os.path.exists(GENERATOR_BIN):
             # call the CLI generator; it will print JSON to stdout
             try:
                 proc = subprocess.run([GENERATOR_BIN, str(batch_size)], capture_output=True, text=True, check=True)
