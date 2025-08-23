@@ -1,56 +1,31 @@
-/* C++ program for estimation of Pi using Monte
-   Carlo Simulation starting from code from https://www.geeksforgeeks.org/estimating-value-pi-using-monte-carlo/ */
 #include <bits/stdc++.h>
-
-// Defines precision for x and y values. More the
-// interval, more the number of significant digits
-#define INTERVAL 10000
 using namespace std;
 
-int main()
-{
-    int interval, i;
-    double rand_x, rand_y, origin_dist, pi;
-    int circle_points = 0, square_points = 0;
-
-    // Initializing rand()
-    srand(time(NULL));
-
-    // Total Random numbers generated = possible x
-    // values * possible y values
-    for (i = 0; i < (INTERVAL * INTERVAL); i++) {
-
-        // Randomly generated x and y values
-        rand_x = double(rand() % (INTERVAL + 1)) / INTERVAL;
-        rand_y = double(rand() % (INTERVAL + 1)) / INTERVAL;
-
-        // Distance between (x, y) from the origin
-        origin_dist = rand_x * rand_x + rand_y * rand_y;
-
-        // Checking if (x, y) lies inside the define
-        // circle with R=1
-        if (origin_dist <= 1)
-            circle_points++;
-
-        // Total number of points generated
-        square_points++;
-
-        // estimated pi after this iteration
-        pi = double(4 * circle_points) / square_points;
-
-        // For visual understanding (Optional)
-        cout << rand_x << " " << rand_y << " "
-             << circle_points << " " << square_points
-             << " - " << pi << endl
-             << endl;
-
-        // Pausing estimation for first 10 values (Optional)
-        if (i < 20)
-            getchar();
+int main(int argc, char** argv) {
+    int batch = 100;
+    if (argc > 1) batch = stoi(argv[1]);
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_real_distribution<> dis(-1.0, 1.0);
+    int c = 0;
+    vector<pair<double,double>> pts;
+    pts.reserve(batch);
+    for (int i = 0; i < batch; ++i) {
+        double x = dis(gen);
+        double y = dis(gen);
+        pts.emplace_back(x,y);
+        if (x*x + y*y <= 1.0) ++c;
     }
-
-    // Final Estimated Value
-    cout << "\nFinal Estimation of Pi = " << pi;
-
+    // print JSON
+    cout << "{";
+    cout << "\"points\": [";
+    for (size_t i=0;i<pts.size();++i){
+        cout << "[" << pts[i].first << "," << pts[i].second << "]";
+        if (i+1<pts.size()) cout << ",";
+    }
+    cout << "],";
+    cout << "\"circle\":" << c << ",";
+    cout << "\"total\":" << batch;
+    cout << "}" << flush;
     return 0;
 }
