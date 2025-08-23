@@ -9,7 +9,7 @@ std::tuple<std::vector<std::array<double,2>>, int, int> generate_batch(int batch
     pts.reserve(batch_size);
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis(0.0, 1.0);
+    std::uniform_real_distribution<> dis(-1.0, 1.0); // Change range to [-1, 1]
     int c = 0;
     for (int i = 0; i < batch_size; ++i) {
         double x = dis(gen);
