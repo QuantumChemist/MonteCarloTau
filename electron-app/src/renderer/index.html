@@ -30,10 +30,11 @@
         estimateEl.textContent = data.tau.toFixed(6);
         // draw points
         data.points.forEach(p => {
-          const x = Math.floor(p[0]*400);
-          const y = Math.floor(p[1]*400);
+          // Transform (-1,-1)-(1,1) to (0,0)-(400,400), invert y-axis for canvas
+          const x = Math.floor((p[0] + 1) * 200);
+          const y = Math.floor((1 - p[1]) * 200);
           const inside = p[0]*p[0] + p[1]*p[1] <= 1.0;
-          ctx.fillStyle = inside ? 'green' : 'red';
+          ctx.fillStyle = inside ? 'violet' : 'pink';
           ctx.fillRect(x, y, 2, 2);
         });
       };
