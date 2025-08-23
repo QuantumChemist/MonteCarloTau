@@ -6,7 +6,7 @@ int main(int argc, char** argv) {
     if (argc > 1) batch = stoi(argv[1]);
     random_device rd;
     mt19937 gen(rd());
-    uniform_real_distribution<> dis(0.0, 1.0);
+    uniform_real_distribution<> dis(-1.0, 1.0);
     int c = 0;
     vector<pair<double,double>> pts;
     pts.reserve(batch);
