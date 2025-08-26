@@ -137,6 +137,7 @@
       <div class="controls">
         <button id="resetBtn">Reset</button>
         <button id="saveBtn">Save Snapshot</button>
+        <button id="soundBtn">Sound: On</button>
         <span class="muted" style="margin-left:auto">Tip: ensure both inside and outside hits.</span>
       </div>
     </div>
@@ -202,6 +203,7 @@
     const timeEl = document.getElementById('time');
     const saveBtn = document.getElementById('saveBtn');
     const resetBtn = document.getElementById('resetBtn');
+    const soundBtn = document.getElementById('soundBtn');
 
     const startOverlay = document.getElementById('startOverlay');
     const startBtn = document.getElementById('startBtn');
@@ -227,10 +229,7 @@
     const hsListEl = document.getElementById('hsList');
     const clearHSEl = document.getElementById('clearHS');
 
-    function loadScores(){
-      try { return JSON.parse(localStorage.getItem(HS_KEY) || '[]'); }
-      catch { return []; }
-    }
+    function loadScores(){ try { return JSON.parse(localStorage.getItem(HS_KEY) || '[]'); } catch { return []; } }
     function saveScores(list){ localStorage.setItem(HS_KEY, JSON.stringify(list)); }
     function addScore(entry){
       const arr = loadScores();
@@ -266,6 +265,35 @@
     clearHSEl.addEventListener('click', () => {
       localStorage.removeItem(HS_KEY);
       renderScores();
+    });
+
+    // ---------- Audio (beeps) ----------
+    const ACtor = (window.AudioContext || window.webkitAudioContext);
+    const ACtx = ACtor ? new ACtor() : null;
+    let SOUND_ON = true;
+
+    async function ensureAudio(){
+      if (ACtx && ACtx.state === 'suspended') {
+        try { await ACtx.resume(); } catch(e) {}
+      }
+    }
+    function beep(freq=440, dur=0.05, gain=0.03){
+      if (!ACtx || !SOUND_ON) return;
+      const t0 = ACtx.currentTime;
+      const osc = ACtx.createOscillator();
+      const g = ACtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      g.gain.value = gain;
+      osc.connect(g).connect(ACtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur);
+    }
+
+    soundBtn.addEventListener('click', async () => {
+      SOUND_ON = !SOUND_ON;
+      soundBtn.textContent = `Sound: ${SOUND_ON ? 'On' : 'Off'}`;
+      if (SOUND_ON) await ensureAudio();
     });
 
     // ---------- Drawing ----------
@@ -339,7 +367,8 @@
       const hit = (nx*nx + ny*ny) <= 1.0;
 
       total += 1;
-      if (hit) inside += 1;
+      if (hit) { inside += 1; beep(660, 0.04, 0.04); }  // inside: higher beep
+      else     { beep(220, 0.06, 0.035); }              // outside: lower beep
 
       shots.push({ x, y, inside: hit, life: 1.0 });
       updateHUD();
@@ -379,6 +408,7 @@
 
     // ---------- Overlays & Controls ----------
     async function startGame() {
+      await ensureAudio();         // unlock audio on user gesture (Start)
       resetState();
       startOverlay.classList.add('hidden');
       endOverlay.classList.add('hidden');
