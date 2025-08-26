@@ -224,45 +224,59 @@
     // shots for visual feedback
     const shots = []; // {x,y,inside,life}
 
-    // ---------- Highscores ----------
+    // ----- Highscores -----
     const HS_KEY = 'tauPointShooterHighscores';
-    const hsListEl = document.getElementById('hsList');
+    const hsListEl  = document.getElementById('hsList');
     const clearHSEl = document.getElementById('clearHS');
 
-    function loadScores(){ try { return JSON.parse(localStorage.getItem(HS_KEY) || '[]'); } catch { return []; } }
-    function saveScores(list){ localStorage.setItem(HS_KEY, JSON.stringify(list)); }
-    function addScore(entry){
+    function loadScores() {
+      try { return JSON.parse(localStorage.getItem(HS_KEY) || '[]'); }
+      catch { return []; }
+    }
+    function saveScores(list) {
+      try { localStorage.setItem(HS_KEY, JSON.stringify(list)); } catch {}
+    }
+    function addScore(entry) {
       const arr = loadScores();
       arr.push(entry);
-      arr.sort((a,b) => a.err - b.err); // lower error is better
+      arr.sort((a,b) => a.err - b.err);          // lower error is better
       const rank = arr.findIndex(x => x === entry) + 1;
-      saveScores(arr.slice(0,10));
-      return { rank, list: arr.slice(0,10) };
+      saveScores(arr.slice(0, 10));               // keep top 10
+      return { rank };
     }
-function renderScores(){
-  const arr = loadScores();
-  hsListEl.innerHTML = '';
-  if (!arr.length){
-    const li = document.createElement('li');
-    li.textContent = 'No scores yet — be the first!';
-    hsListEl.appendChild(li);
-    return;
-  }
-  arr.forEach((s, i) => {
-    const li = document.createElement('li');
-    const name = s.name && s.name.trim() ? s.name.trim() : 'Player';
-    li.innerHTML = `
-      <div class="hs-line">
-        <span class="hs-name">${name}</span>
-        <span>τ=${s.tau.toFixed(6)}</span>
-        <span>err=${s.err.toFixed(6)}</span>
-      </div>
-      <div class="small">${s.inside}/${s.total} • ${new Date(s.ts).toLocaleString()}</div>
-    `;
-    hsListEl.appendChild(li);
-  });
-}
 
+    function renderScores() {
+      const arr = loadScores();
+      hsListEl.innerHTML = '';
+      if (!arr.length) {
+        const li = document.createElement('li');
+        li.textContent = 'No scores yet — be the first!';
+        hsListEl.appendChild(li);
+        return;
+      }
+      arr.forEach((s) => {
+        const li = document.createElement('li');
+        const name = s.name?.trim() || 'Player';
+        li.innerHTML = `
+          <div class="hs-line">
+            <span class="hs-name">${name}</span>
+            <span>τ=${s.tau.toFixed(6)}</span>
+            <span>err=${s.err.toFixed(6)}</span>
+          </div>
+          <div class="small">${s.inside}/${s.total} • ${new Date(s.ts).toLocaleString()}</div>
+        `;
+        hsListEl.appendChild(li);
+      });
+    }
+
+    // Clear button — wipe store, then re-render
+    clearHSEl.addEventListener('click', () => {
+      try {
+        // set to empty array (more predictable than removeItem in some setups)
+        localStorage.setItem(HS_KEY, '[]');
+      } catch {}
+      renderScores();
+    });
 
     // ---------- Audio (beeps) ----------
     const ACtor = (window.AudioContext || window.webkitAudioContext);
