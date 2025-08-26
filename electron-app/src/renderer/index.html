@@ -3,41 +3,332 @@
   <head>
     <meta charset="utf-8" />
     <title>Monte Carlo Tau</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <style>
-      body { font-family: sans-serif; }
-      canvas { border: 1px solid #ccc; }
+      :root{
+        --bg: #0f1724;
+        --card: #0b1220;
+        --muted: #9aa4b2;
+        --accent: #7c3aed;
+        --ok: #34d399;
+        --bad: #fb7185;
+      }
+      html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+      body{background:linear-gradient(180deg,var(--bg),#071226);color:#e6eef8;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
+      .app { width: 100%; max-width:1100px; display:flex; gap:20px; }
+      .panel { background:linear-gradient(180deg,var(--card),#07121a); border-radius:12px; padding:16px; box-shadow:0 6px 24px rgba(2,6,23,0.6); }
+      .left { flex:1; display:flex; flex-direction:column; gap:12px; }
+      .right { width:300px; display:flex; flex-direction:column; gap:12px; }
+      .title { display:flex; align-items:center; gap:12px; }
+      h1{font-size:18px;margin:0}
+      .estimate { font-weight:700; font-size:20px; color:var(--accent); }
+      .sub { color:var(--muted); font-size:13px; margin-top:4px; }
+      canvas { width:100%; height:calc(100vw * 0.6); max-height:720px; background:linear-gradient(180deg,#081019, #06101a); border-radius:8px; display:block; }
+      .controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
+      button{ background:linear-gradient(180deg,#122433,#0a2a3d); color:#e6eef8; border:1px solid rgba(255,255,255,0.04); padding:8px 12px; border-radius:8px; cursor:pointer;}
+      button.primary{ background:linear-gradient(180deg,var(--accent),#5b21b6); box-shadow:0 6px 18px rgba(124,58,237,0.18); }
+      button:hover { opacity:0.9; }
+      .small{ font-size:13px; color:var(--muted) }
+      .legend { display:flex; gap:8px; align-items:center; margin-top:8px; }
+      .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
+      .card { padding:12px; border-radius:8px; background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent); }
+      .spark { height:60px; width:100%; background:transparent; display:block; }
+      .muted{ color:var(--muted); font-size:13px; }
+      .toolbar { display:flex; gap:8px; margin-top:auto; }
+      .fullscreen { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:100; padding:20px; box-sizing:border-box; }
+      .fps { position:absolute; bottom:8px; right:12px; font-size:11px; color:rgba(255,255,255,0.3); }
+      @media (max-width:900px){ .app{flex-direction:column} .right{width:100%} canvas{height:60vw} }
     </style>
   </head>
   <body>
-    <h1>Monte Carlo Tau Visualizer</h1>
-    <div>Estimate: <span id="estimate">-</span></div>
-    <canvas id="c" width="400" height="400"></canvas>
+    <div class="app" id="app">
+      <div class="left panel">
+        <div class="title">
+          <h1>Monte Carlo Tau Visualizer</h1>
+          <div style="margin-left:auto" class="small muted">tau = 2·π estimation</div>
+        </div>
+
+        <div class="card">
+          <div>Estimate: <span id="estimate" class="estimate">-</span> <span class="muted"> (target 6.283185)</span></div>
+          <div class="sub">Points shown are last batch; canvas accumulates all points for density visualization.</div>
+        </div>
+
+        <canvas id="c"></canvas>
+        <div class="fps" id="fps"></div>
+
+        <div class="controls">
+          <button id="startBtn" class="primary">Start</button>
+          <button id="stopBtn">Stop</button>
+          <button id="clearBtn">Clear</button>
+          <div style="margin-left:auto" class="small muted">rate: <input id="rate" type="number" value="1000" style="width:90px;margin-left:8px;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.04)"></div>
+        </div>
+        <div class="legend">
+          <span class="dot" style="background:linear-gradient(90deg,var(--ok),#16a34a)"></span><span class="muted">inside circle</span>
+          <span style="width:16px"></span>
+          <span class="dot" style="background:linear-gradient(90deg,var(--bad),#ef4444)"></span><span class="muted">outside</span>
+        </div>
+      </div>
+
+      <div class="right panel">
+        <div class="card">
+          <div class="muted">Current estimate</div>
+          <div style="font-size:28px;font-weight:700;margin-top:6px" id="estimateLarge">-</div>
+          <div class="muted" style="margin-top:8px">Total points: <span id="total">0</span></div>
+          <div class="muted" style="margin-top:4px">Calculation engine: <span id="engine">-</span></div>
+        </div>
+
+        <div class="card">
+          <div class="muted">Estimate history</div>
+          <canvas id="spark" class="spark"></canvas>
+        </div>
+
+        <div class="card">
+          <div class="muted">Controls</div>
+          <div style="margin-top:8px" class="small">Start/stop the server-side simulation. Clear removes canvas points only.</div>
+        </div>
+
+        <div class="toolbar">
+          <button id="fullscreenBtn">Fullscreen</button>
+          <button id="saveBtn">Save Snapshot</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       const canvas = document.getElementById('c');
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { alpha: false });
+      const spark = document.getElementById('spark');
+      const sctx = spark.getContext('2d');
       const estimateEl = document.getElementById('estimate');
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-      // draw unit circle
-      ctx.beginPath();
-      ctx.arc(200,200,200,0,Math.PI*2);
-      ctx.strokeStyle = '#000';
-      ctx.stroke();
+      const estimateLarge = document.getElementById('estimateLarge');
+      const totalEl = document.getElementById('total');
+      const engineEl = document.getElementById('engine');
+      const startBtn = document.getElementById('startBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const fullscreenBtn = document.getElementById('fullscreenBtn');
+      const saveBtn = document.getElementById('saveBtn');
+      const rateInput = document.getElementById('rate');
+      const appEl = document.getElementById('app');
+      const fpsEl = document.getElementById('fps');
 
-      const evtSource = new EventSource('http://127.0.0.1:5000/stream');
-      evtSource.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        estimateEl.textContent = data.tau.toFixed(6);
-        // draw points
-        data.points.forEach(p => {
-          // Transform (-1,-1)-(1,1) to (0,0)-(400,400), invert y-axis for canvas
-          const x = Math.floor((p[0] + 1) * 200);
-          const y = Math.floor((1 - p[1]) * 200);
-          const inside = p[0]*p[0] + p[1]*p[1] <= 1.0;
-          ctx.fillStyle = inside ? 'violet' : 'pink';
-          ctx.fillRect(x, y, 2, 2);
+      // FPS counter
+      let frameCount = 0;
+      let lastTime = performance.now();
+      let fps = 0;
+      function updateFPS() {
+        const now = performance.now();
+        if (now - lastTime >= 1000) {
+          fps = Math.round((frameCount * 1000) / (now - lastTime));
+          fpsEl.textContent = `${fps} FPS`;
+          frameCount = 0;
+          lastTime = now;
+        }
+        frameCount++;
+      }
+
+      // HiDPI scaling
+      function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = Math.floor(rect.width * dpr);
+        canvas.height = Math.floor(rect.height * dpr);
+        canvas.style.width = rect.width + 'px';
+        canvas.style.height = rect.height + 'px';
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+
+        // spark
+        const r2 = spark.getBoundingClientRect();
+        const dpr2 = Math.min(window.devicePixelRatio || 1, 2);
+        spark.width = Math.floor(r2.width * dpr2);
+        spark.height = Math.floor(r2.height * dpr2);
+        sctx.setTransform(dpr2,0,0,dpr2,0,0);
+        drawBackground();
+        drawCircle();
+        drawSpark();
+      }
+
+      function drawBackground(){
+        ctx.fillStyle = '#06101a';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+      }
+
+      function drawCircle(){
+        const w = canvas.width / (window.devicePixelRatio || 1);
+        const h = canvas.height / (window.devicePixelRatio || 1);
+        const cx = w/2, cy = h/2, r = Math.min(w,h)/2;
+        // subtle fill
+        const grad = ctx.createRadialGradient(cx,cy, r*0.1, cx,cy, r);
+        grad.addColorStop(0,'rgba(124,58,237,0.06)');
+        grad.addColorStop(1,'rgba(2,6,23,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx,cy,r,0,Math.PI*2);
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.beginPath();
+        ctx.arc(cx,cy,r,0,Math.PI*2);
+        ctx.stroke();
+      }
+
+      // point queue + draw loop
+      let pointsQueue = [];
+      let totalPoints = 0;
+      let estimateHistory = [];
+      const MAX_HISTORY = 120;
+
+      function toCanvas(p){
+        // transform -1..1 to canvas pixel coords (CSS dims)
+        const rect = canvas.getBoundingClientRect();
+        const w = rect.width, h = rect.height;
+        const x = (p[0] + 1) * 0.5 * w;
+        const y = (1 - p[1]) * 0.5 * h;
+        return [x,y];
+      }
+
+      function drawFrame(){
+        updateFPS();
+        // draw a handful per frame for smooth animation
+        const batch = pointsQueue.splice(0, 120);
+        batch.forEach(item => {
+          const [px,py] = toCanvas(item.p);
+          ctx.beginPath();
+          ctx.fillStyle = item.inside ? 'rgba(52,211,153,0.9)' : 'rgba(251,113,133,0.9)';
+          ctx.fillRect(px, py, 2, 2);
         });
-      };
+        requestAnimationFrame(drawFrame);
+      }
+
+      function pushBatchFromSSE(data){
+        totalPoints = data.total;
+        totalEl.textContent = totalPoints.toLocaleString();
+        estimateEl.textContent = data.tau.toFixed(6);
+        estimateLarge.textContent = data.tau.toFixed(6);
+        engineEl.textContent = data.engine || "unknown";
+        // update spark history
+        estimateHistory.push(data.tau);
+        if(estimateHistory.length > MAX_HISTORY) estimateHistory.shift();
+        drawSpark();
+        // enqueue points
+        data.points.forEach(p => {
+          pointsQueue.push({ p, inside: (p[0]*p[0] + p[1]*p[1] <= 1.0) });
+        });
+      }
+
+      // SSE
+      let evtSource;
+      function connect() {
+        if(evtSource) evtSource.close();
+        evtSource = new EventSource('http://127.0.0.1:5000/stream');
+        evtSource.onmessage = e => {
+          try{
+            const data = JSON.parse(e.data);
+            pushBatchFromSSE(data);
+          }catch(err){ console.error('parse',err,e.data) }
+        };
+        evtSource.onerror = (e) => { console.warn('SSE error',e) };
+      }
+      connect();
+
+      // sparkline draw
+      function drawSpark(){
+        const w = spark.width / (window.devicePixelRatio || 1);
+        const h = spark.height / (window.devicePixelRatio || 1);
+        sctx.clearRect(0,0,w,h);
+        if(estimateHistory.length < 2) return;
+        const min = Math.min(...estimateHistory);
+        const max = Math.max(...estimateHistory);
+        const range = max - min || 0.001; // avoid division by zero
+
+        // Draw target line at 2π ≈ 6.28
+        const TARGET = 6.283185307179586;
+        const targetY = h - ((TARGET - min) / range) * h;
+        if (targetY >= 0 && targetY <= h) {
+          sctx.beginPath();
+          sctx.moveTo(0, targetY);
+          sctx.lineTo(w, targetY);
+          sctx.strokeStyle = 'rgba(255,255,255,0.15)';
+          sctx.lineWidth = 1;
+          sctx.stroke();
+        }
+
+        // Draw estimate history
+        sctx.beginPath();
+        estimateHistory.forEach((v,i) => {
+          const x = i / (MAX_HISTORY - 1) * w;
+          const y = h - ((v - min) / range) * h;
+          if(i===0) sctx.moveTo(x,y); else sctx.lineTo(x,y);
+        });
+        sctx.strokeStyle = 'rgba(124,58,237,0.9)';
+        sctx.lineWidth = 2;
+        sctx.stroke();
+      }
+
+      // controls
+      startBtn.addEventListener('click', async () => {
+        try{ 
+          await fetch('http://127.0.0.1:5000/start', { 
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body: JSON.stringify({ points: +rateInput.value }) 
+          }); 
+        }catch(e){ console.warn('start failed',e) }
+      });
+      
+      stopBtn.addEventListener('click', async () => {
+        try{ await fetch('http://127.0.0.1:5000/stop', { method:'POST' }); }catch(e){ console.warn('stop failed',e) }
+      });
+      
+      clearBtn.addEventListener('click', () => {
+        drawBackground(); drawCircle(); pointsQueue = []; // keep estimate history
+      });
+
+      // Fullscreen toggle
+      let isFullscreen = false;
+      fullscreenBtn.addEventListener('click', () => {
+        isFullscreen = !isFullscreen;
+        if (isFullscreen) {
+          appEl.classList.add('fullscreen');
+          fullscreenBtn.textContent = 'Exit Fullscreen';
+        } else {
+          appEl.classList.remove('fullscreen');
+          fullscreenBtn.textContent = 'Fullscreen';
+        }
+        resize();
+      });
+
+      // Save snapshot
+      saveBtn.addEventListener('click', () => {
+        const link = document.createElement('a');
+        // Create a new canvas to compose the final image
+        const saveCanvas = document.createElement('canvas');
+        const rect = canvas.getBoundingClientRect();
+        saveCanvas.width = rect.width;
+        saveCanvas.height = rect.height;
+        const saveCtx = saveCanvas.getContext('2d');
+        
+        // Draw the visualization
+        saveCtx.drawImage(canvas, 0, 0, saveCanvas.width, saveCanvas.height);
+        
+        // Add text with current estimate
+        saveCtx.font = '16px sans-serif';
+        saveCtx.fillStyle = 'rgba(255,255,255,0.9)';
+        saveCtx.fillText(`τ ≈ ${estimateEl.textContent} (${totalPoints.toLocaleString()} points)`, 20, 30);
+        
+        // Convert to data URL and trigger download
+        link.href = saveCanvas.toDataURL('image/png');
+        link.download = `monte-carlo-tau-${Date.now()}.png`;
+        link.click();
+      });
+
+      // init
+      window.addEventListener('resize', resize);
+      resize();
+      drawFrame();
+
+      // initial background
+      drawBackground(); drawCircle();
     </script>
   </body>
- </html>
+</html>
