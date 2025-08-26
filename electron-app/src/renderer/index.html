@@ -175,14 +175,19 @@
       let estimateHistory = [];
       const MAX_HISTORY = 120;
 
-      function toCanvas(p){
-        // transform -1..1 to canvas pixel coords (CSS dims)
+      function toCanvas(p) {
         const rect = canvas.getBoundingClientRect();
         const w = rect.width, h = rect.height;
-        const x = (p[0] + 1) * 0.5 * w;
-        const y = (1 - p[1]) * 0.5 * h;
-        return [x,y];
+
+        // use uniform scale to preserve circles
+        const s = 0.5 * Math.min(w, h);   // half of the smaller side
+        const cx = 0.5 * w, cy = 0.5 * h; // canvas center
+
+        const x = cx + p[0] * s;
+        const y = cy - p[1] * s; // invert y for canvas
+        return [x, y];
       }
+
 
       function drawFrame(){
         updateFPS();
