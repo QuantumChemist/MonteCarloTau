@@ -321,7 +321,7 @@
         p.life -= dt;
         if (p.life <= 0) { shots.splice(i,1); continue; }
         ctx.globalAlpha = Math.max(0, p.life);
-        ctx.fillStyle = p.inside ? '#34d399' : '#fb7185';
+        ctx.fillStyle = p.inside ? 'violet' : 'pink';
         ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
         ctx.globalAlpha = 1;
       }
