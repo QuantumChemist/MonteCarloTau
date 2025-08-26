@@ -239,33 +239,30 @@
       saveScores(arr.slice(0,10));
       return { rank, list: arr.slice(0,10) };
     }
-    function renderScores(){
-      const arr = loadScores();
-      hsListEl.innerHTML = '';
-      if (!arr.length){
-        const li = document.createElement('li');
-        li.textContent = 'No scores yet — be the first!';
-        hsListEl.appendChild(li);
-        return;
-      }
-      arr.forEach((s, i) => {
-        const li = document.createElement('li');
-        const name = s.name && s.name.trim() ? s.name.trim() : 'Player';
-        li.innerHTML = `
-          <div class="hs-line">
-            <span class="hs-name">${i+1}. ${name}</span>
-            <span>τ=${s.tau.toFixed(6)}</span>
-            <span>err=${s.err.toFixed(6)}</span>
-          </div>
-          <div class="small">${s.inside}/${s.total} • ${new Date(s.ts).toLocaleString()}</div>
-        `;
-        hsListEl.appendChild(li);
-      });
-    }
-    clearHSEl.addEventListener('click', () => {
-      localStorage.removeItem(HS_KEY);
-      renderScores();
-    });
+function renderScores(){
+  const arr = loadScores();
+  hsListEl.innerHTML = '';
+  if (!arr.length){
+    const li = document.createElement('li');
+    li.textContent = 'No scores yet — be the first!';
+    hsListEl.appendChild(li);
+    return;
+  }
+  arr.forEach((s, i) => {
+    const li = document.createElement('li');
+    const name = s.name && s.name.trim() ? s.name.trim() : 'Player';
+    li.innerHTML = `
+      <div class="hs-line">
+        <span class="hs-name">${name}</span>
+        <span>τ=${s.tau.toFixed(6)}</span>
+        <span>err=${s.err.toFixed(6)}</span>
+      </div>
+      <div class="small">${s.inside}/${s.total} • ${new Date(s.ts).toLocaleString()}</div>
+    `;
+    hsListEl.appendChild(li);
+  });
+}
+
 
     // ---------- Audio (beeps) ----------
     const ACtor = (window.AudioContext || window.webkitAudioContext);
