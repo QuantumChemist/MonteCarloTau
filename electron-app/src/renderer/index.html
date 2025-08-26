@@ -53,10 +53,8 @@
           <div class="sub">Points shown are last batch; canvas accumulates all points for density visualization.</div>
         </div>
 
-        <div style="position:relative">
-          <canvas id="c"></canvas>
-          <div class="fps" id="fps"></div>
-        </div>
+        <canvas id="c"></canvas>
+        <div class="fps" id="fps"></div>
 
         <div class="controls">
           <button id="clearBtn">Clear</button>
@@ -102,14 +100,14 @@
       const estimateLarge = document.getElementById('estimateLarge');
       const totalEl = document.getElementById('total');
       const engineEl = document.getElementById('engine');
+      const startBtn = document.getElementById('startBtn');
+      const stopBtn = document.getElementById('stopBtn');
       const clearBtn = document.getElementById('clearBtn');
       const fullscreenBtn = document.getElementById('fullscreenBtn');
       const saveBtn = document.getElementById('saveBtn');
+      const rateInput = document.getElementById('rate');
       const appEl = document.getElementById('app');
       const fpsEl = document.getElementById('fps');
-
-      // unified DPR
-      let DPR = 1;
 
       // FPS counter
       let frameCount = 0;
@@ -128,38 +126,35 @@
 
       // HiDPI scaling
       function resize() {
-        DPR = Math.min(window.devicePixelRatio || 1, 2);
-
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
         const rect = canvas.getBoundingClientRect();
-        canvas.width = Math.floor(rect.width * DPR);
-        canvas.height = Math.floor(rect.height * DPR);
+        canvas.width = Math.floor(rect.width * dpr);
+        canvas.height = Math.floor(rect.height * dpr);
         canvas.style.width = rect.width + 'px';
         canvas.style.height = rect.height + 'px';
-        ctx.setTransform(DPR,0,0,DPR,0,0); // draw in CSS px
+        ctx.setTransform(dpr,0,0,dpr,0,0);
 
+        // spark
         const r2 = spark.getBoundingClientRect();
-        spark.width = Math.floor(r2.width * DPR);
-        spark.height = Math.floor(r2.height * DPR);
-        spark.style.width = r2.width + 'px';
-        spark.style.height = r2.height + 'px';
-        sctx.setTransform(DPR,0,0,DPR,0,0); // draw in CSS px
-
+        const dpr2 = Math.min(window.devicePixelRatio || 1, 2);
+        spark.width = Math.floor(r2.width * dpr2);
+        spark.height = Math.floor(r2.height * dpr2);
+        sctx.setTransform(dpr2,0,0,dpr2,0,0);
         drawBackground();
         drawCircle();
         drawSpark();
       }
 
       function drawBackground(){
-        const rect = canvas.getBoundingClientRect();
         ctx.fillStyle = '#06101a';
-        ctx.fillRect(0,0,rect.width,rect.height);
+        ctx.fillRect(0,0,canvas.width,canvas.height);
       }
 
       function drawCircle(){
-        const rect = canvas.getBoundingClientRect();
-        const w = rect.width, h = rect.height;
+        const w = canvas.width / (window.devicePixelRatio || 1);
+        const h = canvas.height / (window.devicePixelRatio || 1);
         const cx = w/2, cy = h/2, r = Math.min(w,h)/2;
-
+        // subtle fill
         const grad = ctx.createRadialGradient(cx,cy, r*0.1, cx,cy, r);
         grad.addColorStop(0,'rgba(124,58,237,0.06)');
         grad.addColorStop(1,'rgba(2,6,23,0)');
@@ -167,7 +162,6 @@
         ctx.beginPath();
         ctx.arc(cx,cy,r,0,Math.PI*2);
         ctx.fill();
-
         ctx.lineWidth = 1.5;
         ctx.strokeStyle = 'rgba(255,255,255,0.12)';
         ctx.beginPath();
@@ -181,21 +175,23 @@
       let estimateHistory = [];
       const MAX_HISTORY = 120;
 
-      // circle-preserving mapping from [-1,1]^2 → canvas CSS coords
       function toCanvas(p) {
         const rect = canvas.getBoundingClientRect();
-        const w = rect.width, h = w;
+        const w = rect.width, h = rect.height;
 
-        const s = 0.5 * Math.min(w, h);   // uniform scale
-        const cx = 0.5 * w, cy = 0.5 * h; // center
+        // use uniform scale to preserve circles
+        const s = 0.5 * Math.min(w, h);   // half of the smaller side
+        const cx = 0.5 * w, cy = 0.5 * h; // canvas center
 
         const x = cx + p[0] * s;
         const y = cy - p[1] * s; // invert y for canvas
         return [x, y];
       }
 
+
       function drawFrame(){
         updateFPS();
+        // draw a handful per frame for smooth animation
         const batch = pointsQueue.splice(0, 120);
         batch.forEach(item => {
           const [px,py] = toCanvas(item.p);
@@ -212,11 +208,11 @@
         estimateEl.textContent = data.tau.toFixed(6);
         estimateLarge.textContent = data.tau.toFixed(6);
         engineEl.textContent = data.engine || "unknown";
-
+        // update spark history
         estimateHistory.push(data.tau);
         if(estimateHistory.length > MAX_HISTORY) estimateHistory.shift();
         drawSpark();
-
+        // enqueue points
         data.points.forEach(p => {
           pointsQueue.push({ p, inside: (p[0]*p[0] + p[1]*p[1] <= 1.0) });
         });
@@ -237,18 +233,18 @@
       }
       connect();
 
-      // sparkline draw (CSS px)
+      // sparkline draw
       function drawSpark(){
-        const rect = spark.getBoundingClientRect();
-        const w = rect.width, h = w;
+        const w = spark.width / (window.devicePixelRatio || 1);
+        const h = spark.height / (window.devicePixelRatio || 1);
         sctx.clearRect(0,0,w,h);
         if(estimateHistory.length < 2) return;
-
         const min = Math.min(...estimateHistory);
         const max = Math.max(...estimateHistory);
-        const range = max - min || 0.001;
+        const range = max - min || 0.001; // avoid division by zero
 
-        const TARGET = 2 * Math.PI;
+        // Draw target line at 2π ≈ 6.28
+        const TARGET = 6.283185307179586;
         const targetY = h - ((TARGET - min) / range) * h;
         if (targetY >= 0 && targetY <= h) {
           sctx.beginPath();
@@ -259,6 +255,7 @@
           sctx.stroke();
         }
 
+        // Draw estimate history
         sctx.beginPath();
         estimateHistory.forEach((v,i) => {
           const x = i / (MAX_HISTORY - 1) * w;
@@ -272,7 +269,7 @@
 
       // controls
       clearBtn.addEventListener('click', () => {
-        drawBackground(); drawCircle(); pointsQueue = [];
+        drawBackground(); drawCircle(); pointsQueue = []; // keep estimate history
       });
 
       // Fullscreen toggle
@@ -289,24 +286,25 @@
         resize();
       });
 
-      // Save snapshot (hi-res)
+      // Save snapshot
       saveBtn.addEventListener('click', () => {
-        const rect = canvas.getBoundingClientRect();
+        const link = document.createElement('a');
+        // Create a new canvas to compose the final image
         const saveCanvas = document.createElement('canvas');
-        saveCanvas.width  = Math.floor(rect.width  * DPR);
-        saveCanvas.height = Math.floor(rect.height * DPR);
+        const rect = canvas.getBoundingClientRect();
+        saveCanvas.width = rect.width;
+        saveCanvas.height = rect.height;
         const saveCtx = saveCanvas.getContext('2d');
-        saveCtx.setTransform(DPR, 0, 0, DPR, 0, 0); // draw in CSS px
-
-        // Draw current visualization
-        saveCtx.drawImage(canvas, 0, 0, rect.width, rect.height);
-
-        // Add text overlay
+        
+        // Draw the visualization
+        saveCtx.drawImage(canvas, 0, 0, saveCanvas.width, saveCanvas.height);
+        
+        // Add text with current estimate
         saveCtx.font = '16px sans-serif';
         saveCtx.fillStyle = 'rgba(255,255,255,0.9)';
         saveCtx.fillText(`τ ≈ ${estimateEl.textContent} (${totalPoints.toLocaleString()} points)`, 20, 30);
-
-        const link = document.createElement('a');
+        
+        // Convert to data URL and trigger download
         link.href = saveCanvas.toDataURL('image/png');
         link.download = `monte-carlo-tau-${Date.now()}.png`;
         link.click();
