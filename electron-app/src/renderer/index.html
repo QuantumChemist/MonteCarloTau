@@ -266,30 +266,6 @@
       }
 
       // controls
-      startBtn.addEventListener('click', async () => {
-        try {
-          const response = await fetch('http://127.0.0.1:5000/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ points: +rateInput.value })
-          });
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        } catch (e) {
-          alert('Failed to start simulation. Make sure the backend server is running and CORS is enabled.');
-          console.warn('start failed', e);
-        }
-      });
-
-      stopBtn.addEventListener('click', async () => {
-        try {
-          const response = await fetch('http://127.0.0.1:5000/stop', { method: 'POST' });
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        } catch (e) {
-          alert('Failed to stop simulation. Make sure the backend server is running and CORS is enabled.');
-          console.warn('stop failed', e);
-        }
-      });
-
       clearBtn.addEventListener('click', () => {
         drawBackground(); drawCircle(); pointsQueue = []; // keep estimate history
       });
