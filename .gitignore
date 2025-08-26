@@ -4,6 +4,8 @@ __pycache__/
 node_modules/
 electron-app/dist/
 electron-app/node_modules/
+electron-app/.cache/
+electron-app/out
 electron-app/*.pak
 electron-app/*.log
 electron-app/*.tmp
