@@ -1,322 +1,327 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Monte Carlo Tau</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <style>
-      :root{
-        --bg: #0f1724;
-        --card: #0b1220;
-        --muted: #9aa4b2;
-        --accent: #7c3aed;
-        --ok: #34d399;
-        --bad: #fb7185;
-      }
-      html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;}
-      body{background:linear-gradient(180deg,var(--bg),#071226);color:#e6eef8;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
-      .app { width: 100%; max-width:1100px; display:flex; gap:20px; }
-      .panel { background:linear-gradient(180deg,var(--card),#07121a); border-radius:12px; padding:16px; box-shadow:0 6px 24px rgba(2,6,23,0.6); }
-      .left { flex:1; display:flex; flex-direction:column; gap:12px; }
-      .right { width:300px; display:flex; flex-direction:column; gap:12px; }
-      .title { display:flex; align-items:center; gap:12px; }
-      h1{font-size:18px;margin:0}
-      .estimate { font-weight:700; font-size:20px; color:var(--accent); }
-      .sub { color:var(--muted); font-size:13px; margin-top:4px; }
-      canvas { width:100%; height:calc(100vw * 0.6); max-height:720px; background:linear-gradient(180deg,#081019, #06101a); border-radius:8px; display:block; }
-      .controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
-      button{ background:linear-gradient(180deg,#122433,#0a2a3d); color:#e6eef8; border:1px solid rgba(255,255,255,0.04); padding:8px 12px; border-radius:8px; cursor:pointer;}
-      button.primary{ background:linear-gradient(180deg,var(--accent),#5b21b6); box-shadow:0 6px 18px rgba(124,58,237,0.18); }
-      button:hover { opacity:0.9; }
-      .small{ font-size:13px; color:var(--muted) }
-      .legend { display:flex; gap:8px; align-items:center; margin-top:8px; }
-      .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
-      .card { padding:12px; border-radius:8px; background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent); }
-      .spark { height:60px; width:100%; background:transparent; display:block; }
-      .muted{ color:var(--muted); font-size:13px; }
-      .toolbar { display:flex; gap:8px; margin-top:auto; }
-      .fullscreen { position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:100; padding:20px; box-sizing:border-box; }
-      .fps { position:absolute; bottom:8px; right:12px; font-size:11px; color:rgba(255,255,255,0.3); }
-      @media (max-width:900px){ .app{flex-direction:column} .right{width:100%} canvas{height:60vw} }
-    </style>
-  </head>
-  <body>
-    <div class="app" id="app">
-      <div class="left panel">
-        <div class="title">
-          <h1>Monte Carlo Tau Visualizer</h1>
-          <div style="margin-left:auto" class="small muted">tau = 2·π estimation</div>
-        </div>
+<head>
+  <meta charset="utf-8" />
+  <title>Monte Carlo Tau — Point Shooter</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#9aa4b2; --accent:#7c3aed;
+      --ok:#34d399; --bad:#fb7185; --ink:#e6eef8;
+    }
+    html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    body{background:linear-gradient(180deg,var(--bg),#071226);color:var(--ink);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
+    .app{width:100%;max-width:1100px;display:flex;gap:20px}
+    .panel{background:linear-gradient(180deg,var(--card),#07121a);border-radius:12px;padding:16px;box-shadow:0 6px 24px rgba(2,6,23,0.6)}
+    .left{flex:1;display:flex;flex-direction:column;gap:12px}
+    .right{width:300px;display:flex;flex-direction:column;gap:12px}
+    h1{font-size:18px;margin:0}
+    .muted{color:var(--muted)}
+    .title{display:flex;align-items:center;gap:12px}
+    .hud{display:flex;gap:12px;flex-wrap:wrap}
+    .stat{background:linear-gradient(180deg,rgba(255,255,255,0.03),transparent);padding:8px 10px;border-radius:8px;min-width:120px}
+    .big{font-size:22px;font-weight:700}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:auto}
+    button{background:linear-gradient(180deg,#122433,#0a2a3d);color:var(--ink);border:1px solid rgba(255,255,255,0.05);padding:8px 12px;border-radius:8px;cursor:pointer}
+    button.primary{background:linear-gradient(180deg,var(--accent),#5b21b6);box-shadow:0 6px 18px rgba(124,58,237,0.18)}
+    button:hover{opacity:.9}
+    canvas{width:100%;height:calc(100vw * 0.6);max-height:720px;background:linear-gradient(180deg,#081019,#06101a);border-radius:8px;display:block}
+    .legend{display:flex;gap:10px;align-items:center}
+    .dot{width:10px;height:10px;border-radius:50%}
+    .fps{position:absolute;bottom:8px;right:12px;font-size:11px;color:rgba(255,255,255,0.32)}
+    .canvasWrap{position:relative}
+    @media (max-width:900px){.app{flex-direction:column}.right{width:100%}canvas{height:60vw}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="left panel">
+      <div class="title">
+        <h1>Monte Carlo Tau — Point Shooter</h1>
+        <div style="margin-left:auto" class="muted">Click to drop points. 60s round.</div>
+      </div>
 
-        <div class="card">
-          <div>Estimate: <span id="estimate" class="estimate">-</span> <span class="muted"> (target 6.283185)</span></div>
-          <div class="sub">Points shown are last batch; canvas accumulates all points for density visualization.</div>
+      <div class="hud">
+        <div class="stat">
+          <div class="muted">τ estimate</div>
+          <div id="tau" class="big">-</div>
         </div>
-
-        <canvas id="c"></canvas>
-        <div class="fps" id="fps"></div>
-
-        <div class="controls">
-          <button id="clearBtn">Clear</button>
+        <div class="stat">
+          <div class="muted">Score</div>
+          <div id="score" class="big">0</div>
         </div>
-        <div class="legend">
-          <span class="dot" style="background:linear-gradient(90deg,var(--ok),#16a34a)"></span><span class="muted">inside circle</span>
-          <span style="width:16px"></span>
-          <span class="dot" style="background:linear-gradient(90deg,var(--bad),#ef4444)"></span><span class="muted">outside</span>
+        <div class="stat">
+          <div class="muted">Inside / Total</div>
+          <div id="counts" class="big">0 / 0</div>
+        </div>
+        <div class="stat">
+          <div class="muted">Time</div>
+          <div id="time" class="big">60.0s</div>
         </div>
       </div>
 
-      <div class="right panel">
-        <div class="card">
-          <div class="muted">Current estimate</div>
-          <div style="font-size:28px;font-weight:700;margin-top:6px" id="estimateLarge">-</div>
-          <div class="muted" style="margin-top:8px">Total points: <span id="total">0</span></div>
-          <div class="muted" style="margin-top:4px">Calculation engine: <span id="engine">-</span></div>
-        </div>
+      <div class="canvasWrap">
+        <canvas id="c"></canvas>
+        <div id="fps" class="fps"></div>
+      </div>
 
-        <div class="card">
-          <div class="muted">Estimate history</div>
-          <canvas id="spark" class="spark"></canvas>
-        </div>
+      <div class="legend">
+        <span class="dot" style="background:linear-gradient(90deg,var(--ok),#16a34a)"></span>
+        <span class="muted">inside</span>
+        <span style="width:12px"></span>
+        <span class="dot" style="background:linear-gradient(90deg,var(--bad),#ef4444)"></span>
+        <span class="muted">outside</span>
+      </div>
 
-        <div class="card">
-          <div class="muted">Controls</div>
-          <div style="margin-top:8px" class="small">Clear removes canvas points only.</div>
-        </div>
-
-        <div class="toolbar">
-          <button id="fullscreenBtn">Fullscreen</button>
-          <button id="saveBtn">Save Snapshot</button>
-        </div>
+      <div class="controls">
+        <button id="startBtn" class="primary">Start</button>
+        <button id="resetBtn">Reset</button>
+        <button id="saveBtn">Save Snapshot</button>
+        <span class="muted" style="margin-left:auto">Tip: aim near the circle edge for risk/reward.</span>
       </div>
     </div>
 
-    <script>
-      const canvas = document.getElementById('c');
-      const ctx = canvas.getContext('2d', { alpha: false });
-      const spark = document.getElementById('spark');
-      const sctx = spark.getContext('2d');
-      const estimateEl = document.getElementById('estimate');
-      const estimateLarge = document.getElementById('estimateLarge');
-      const totalEl = document.getElementById('total');
-      const engineEl = document.getElementById('engine');
-      const startBtn = document.getElementById('startBtn');
-      const stopBtn = document.getElementById('stopBtn');
-      const clearBtn = document.getElementById('clearBtn');
-      const fullscreenBtn = document.getElementById('fullscreenBtn');
-      const saveBtn = document.getElementById('saveBtn');
-      const rateInput = document.getElementById('rate');
-      const appEl = document.getElementById('app');
-      const fpsEl = document.getElementById('fps');
+    <div class="right panel">
+      <div class="stat">
+        <div class="muted">Rules</div>
+        <ul class="muted" style="margin:8px 0 0 18px;line-height:1.4">
+          <li>Click anywhere inside the square to drop a point.</li>
+          <li><span style="color:var(--ok)">Inside</span>: +10 pts</li>
+          <li><span style="color:var(--bad)">Outside</span>: −5 pts</li>
+          <li>Round time: 60 seconds</li>
+          <li>τ ≈ 8 · (inside / total)</li>
+        </ul>
+      </div>
+      <div class="stat">
+        <div class="muted">Notes</div>
+        <p class="muted" style="margin:8px 0 0">
+          This is a game, so points are <em>not random</em>; the τ estimate reflects your shots (biased). 😄
+        </p>
+      </div>
+    </div>
+  </div>
 
-      // FPS counter
-      let frameCount = 0;
-      let lastTime = performance.now();
-      let fps = 0;
-      function updateFPS() {
-        const now = performance.now();
-        if (now - lastTime >= 1000) {
-          fps = Math.round((frameCount * 1000) / (now - lastTime));
-          fpsEl.textContent = `${fps} FPS`;
-          frameCount = 0;
-          lastTime = now;
+  <script>
+    // ---------- Canvas & DPR ----------
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const fpsEl = document.getElementById('fps');
+    let DPR = 1;
+
+    function resize() {
+      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * DPR);
+      canvas.height = Math.floor(rect.height * DPR);
+      ctx.setTransform(DPR,0,0,DPR,0,0); // draw in CSS px
+      drawAll();
+    }
+    window.addEventListener('resize', resize);
+
+    // ---------- Geometry helpers ----------
+    // Square = [-1,1]^2; Circle: x^2 + y^2 <= 1
+    function getCanvasRect() { return canvas.getBoundingClientRect(); }
+    function centerAndScale() {
+      const r = getCanvasRect(), w = r.width, h = r.height;
+      const s = 0.5 * Math.min(w,h);
+      const cx = 0.5 * w, cy = 0.5 * h;
+      return {cx, cy, s, w, h};
+    }
+    function toCanvas(p) {
+      const {cx, cy, s} = centerAndScale();
+      const x = cx + p[0] * s;
+      const y = cy - p[1] * s;
+      return [x,y];
+    }
+    function fromCanvas(x,y) {
+      const {cx, cy, s} = centerAndScale();
+      return [(x - cx)/s, -(y - cy)/s]; // normalized to [-1,1]
+    }
+
+    // ---------- Game state ----------
+    const tauEl = document.getElementById('tau');
+    const scoreEl = document.getElementById('score');
+    const countsEl = document.getElementById('counts');
+    const timeEl = document.getElementById('time');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const saveBtn = document.getElementById('saveBtn');
+
+    let running = false;
+    let timeLeft = 60.0; // seconds
+    let lastTS = 0;
+    let total = 0, inside = 0, score = 0;
+
+    // particles for click feedback
+    const shots = []; // {x,y,inside,life}
+
+    // ---------- Sounds (tiny beeps) ----------
+    const ACtx = (window.AudioContext || window.webkitAudioContext) ? new (window.AudioContext || window.webkitAudioContext)() : null;
+    function beep(freq=440, dur=0.05, gain=0.03) {
+      if(!ACtx) return;
+      const t0 = ACtx.currentTime;
+      const osc = ACtx.createOscillator();
+      const g = ACtx.createGain();
+      osc.frequency.value = freq;
+      g.gain.value = gain;
+      osc.connect(g).connect(ACtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur);
+    }
+
+    // ---------- Drawing ----------
+    function drawBackground() {
+      const r = getCanvasRect();
+      ctx.fillStyle = '#06101a';
+      ctx.fillRect(0,0,r.width,r.height);
+    }
+    function drawBoard() {
+      const {cx, cy, s, w, h} = centerAndScale();
+
+      // square border
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cx - s, cy - s, 2*s, 2*s);
+
+      // circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, s, 0, Math.PI*2);
+      const grad = ctx.createRadialGradient(cx,cy,s*0.1, cx,cy,s);
+      grad.addColorStop(0,'rgba(124,58,237,0.06)');
+      grad.addColorStop(1,'rgba(2,6,23,0)');
+      ctx.fillStyle = grad; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1.5; ctx.stroke();
+
+      // axes (light)
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx - s, cy); ctx.lineTo(cx + s, cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, cy - s); ctx.lineTo(cx, cy + s); ctx.stroke();
+    }
+    function drawShots(dt) {
+      // update & render simple fading squares
+      for (let i = shots.length - 1; i >= 0; i--) {
+        const p = shots[i];
+        p.life -= dt;
+        if (p.life <= 0) { shots.splice(i,1); continue; }
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.inside ? '#34d399' : '#fb7185';
+        ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    function drawAll() {
+      drawBackground();
+      drawBoard();
+      drawShots(0); // just render current
+    }
+
+    // ---------- HUD ----------
+    function updateHUD() {
+      const tau = total > 0 ? 8 * (inside / total) : NaN;
+      tauEl.textContent = isNaN(tau) ? '-' : tau.toFixed(6);
+      scoreEl.textContent = score.toString();
+      countsEl.textContent = `${inside} / ${total}`;
+      timeEl.textContent = `${timeLeft.toFixed(1)}s`;
+    }
+
+    // ---------- Interaction ----------
+    canvas.addEventListener('click', (e) => {
+      if (!running) return;
+      const rect = getCanvasRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // check within square bounds; ignore clicks outside the square
+      const {cx, cy, s} = centerAndScale();
+      if (x < cx - s || x > cx + s || y < cy - s || y > cy + s) return;
+
+      const [nx, ny] = fromCanvas(x, y);
+      const hit = (nx*nx + ny*ny) <= 1.0;
+
+      total += 1;
+      if (hit) { inside += 1; score += 10; beep(660, 0.04, 0.04); }
+      else     { score -= 5;  beep(200, 0.05, 0.035); }
+
+      shots.push({ x, y, inside: hit, life: 1.0 });
+      updateHUD();
+    });
+
+    // ---------- Game loop ----------
+    let rafId = null;
+    let fpsFrames = 0, fpsLast = performance.now();
+
+    function loop(ts) {
+      if (!lastTS) lastTS = ts;
+      const dt = Math.min(0.05, (ts - lastTS)/1000); // clamp
+      lastTS = ts;
+
+      // time & end condition
+      if (running) {
+        timeLeft = Math.max(0, timeLeft - dt);
+        if (timeLeft <= 0) {
+          running = false;
         }
-        frameCount++;
       }
 
-      // HiDPI scaling
-      function resize() {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = Math.floor(rect.width * dpr);
-        canvas.height = Math.floor(rect.height * dpr);
-        canvas.style.width = rect.width + 'px';
-        canvas.style.height = rect.height + 'px';
-        ctx.setTransform(dpr,0,0,dpr,0,0);
+      // draw
+      drawBackground();
+      drawBoard();
+      drawShots(dt);
+      updateHUD();
 
-        // spark
-        const r2 = spark.getBoundingClientRect();
-        const dpr2 = Math.min(window.devicePixelRatio || 1, 2);
-        spark.width = Math.floor(r2.width * dpr2);
-        spark.height = Math.floor(r2.height * dpr2);
-        sctx.setTransform(dpr2,0,0,dpr2,0,0);
-        drawBackground();
-        drawCircle();
-        drawSpark();
+      // FPS meter
+      fpsFrames++;
+      const now = ts;
+      if (now - fpsLast >= 1000) {
+        const fps = Math.round((fpsFrames * 1000) / (now - fpsLast));
+        fpsEl.textContent = `${fps} FPS`;
+        fpsFrames = 0; fpsLast = now;
       }
 
-      function drawBackground(){
-        ctx.fillStyle = '#06101a';
-        ctx.fillRect(0,0,canvas.width,canvas.height);
+      rafId = requestAnimationFrame(loop);
+    }
+
+    // ---------- Controls ----------
+    startBtn.addEventListener('click', async () => {
+      if (ACtx && ACtx.state === 'suspended') { try { await ACtx.resume(); } catch{} }
+      if (!running && timeLeft <= 0) { // restart after end
+        timeLeft = 60.0; total = inside = score = 0; shots.length = 0;
       }
+      running = true;
+    });
 
-      function drawCircle(){
-        const w = canvas.width / (window.devicePixelRatio || 1);
-        const h = canvas.height / (window.devicePixelRatio || 1);
-        const cx = w/2, cy = h/2, r = Math.min(w,h)/2;
-        // subtle fill
-        const grad = ctx.createRadialGradient(cx,cy, r*0.1, cx,cy, r);
-        grad.addColorStop(0,'rgba(124,58,237,0.06)');
-        grad.addColorStop(1,'rgba(2,6,23,0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(cx,cy,r,0,Math.PI*2);
-        ctx.fill();
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-        ctx.beginPath();
-        ctx.arc(cx,cy,r,0,Math.PI*2);
-        ctx.stroke();
-      }
+    resetBtn.addEventListener('click', () => {
+      running = false;
+      timeLeft = 60.0; total = inside = score = 0; shots.length = 0;
+      drawAll(); updateHUD();
+    });
 
-      // point queue + draw loop
-      let pointsQueue = [];
-      let totalPoints = 0;
-      let estimateHistory = [];
-      const MAX_HISTORY = 120;
+    // Save PNG snapshot (hi-res)
+    saveBtn.addEventListener('click', () => {
+      const rect = getCanvasRect();
+      const out = document.createElement('canvas');
+      out.width = Math.floor(rect.width * DPR);
+      out.height = Math.floor(rect.height * DPR);
+      const octx = out.getContext('2d');
+      octx.setTransform(DPR,0,0,DPR,0,0);
+      // redraw current board & shots into offscreen
+      // (cheaper: draw the on-screen canvas)
+      octx.drawImage(canvas, 0, 0, rect.width, rect.height);
+      octx.font = '16px system-ui,Segoe UI,Roboto,Arial';
+      octx.fillStyle = 'rgba(255,255,255,0.9)';
+      const tauText = document.getElementById('tau').textContent;
+      octx.fillText(`τ ≈ ${tauText} (inside/total = ${inside}/${total}, score=${score})`, 16, 28);
+      const a = document.createElement('a');
+      a.href = out.toDataURL('image/png'); a.download = `point-shooter-${Date.now()}.png`; a.click();
+    });
 
-      function toCanvas(p) {
-        const rect = canvas.getBoundingClientRect();
-        const w = rect.width, h = rect.height;
-
-        // use uniform scale to preserve circles
-        const s = 0.5 * Math.min(w, h);   // half of the smaller side
-        const cx = 0.5 * w, cy = 0.5 * h; // canvas center
-
-        const x = cx + p[0] * s;
-        const y = cy - p[1] * s; // invert y for canvas
-        return [x, y];
-      }
-
-
-      function drawFrame(){
-        updateFPS();
-        // draw a handful per frame for smooth animation
-        const batch = pointsQueue.splice(0, 120);
-        batch.forEach(item => {
-          const [px,py] = toCanvas(item.p);
-          ctx.beginPath();
-          ctx.fillStyle = item.inside ? 'violet' : 'pink';
-          ctx.fillRect(px, py, 2, 2);
-        });
-        requestAnimationFrame(drawFrame);
-      }
-
-      function pushBatchFromSSE(data){
-        totalPoints = data.total;
-        totalEl.textContent = totalPoints.toLocaleString();
-        estimateEl.textContent = data.tau.toFixed(6);
-        estimateLarge.textContent = data.tau.toFixed(6);
-        engineEl.textContent = data.engine || "unknown";
-        // update spark history
-        estimateHistory.push(data.tau);
-        if(estimateHistory.length > MAX_HISTORY) estimateHistory.shift();
-        drawSpark();
-        // enqueue points
-        data.points.forEach(p => {
-          pointsQueue.push({ p, inside: (p[0]*p[0] + p[1]*p[1] <= 1.0) });
-        });
-      }
-
-      // SSE
-      let evtSource;
-      function connect() {
-        if(evtSource) evtSource.close();
-        evtSource = new EventSource('http://127.0.0.1:5000/stream');
-        evtSource.onmessage = e => {
-          try{
-            const data = JSON.parse(e.data);
-            pushBatchFromSSE(data);
-          }catch(err){ console.error('parse',err,e.data) }
-        };
-        evtSource.onerror = (e) => { console.warn('SSE error',e) };
-      }
-      connect();
-
-      // sparkline draw
-      function drawSpark(){
-        const w = spark.width / (window.devicePixelRatio || 1);
-        const h = spark.height / (window.devicePixelRatio || 1);
-        sctx.clearRect(0,0,w,h);
-        if(estimateHistory.length < 2) return;
-        const min = Math.min(...estimateHistory);
-        const max = Math.max(...estimateHistory);
-        const range = max - min || 0.001; // avoid division by zero
-
-        // Draw target line at 2π ≈ 6.28
-        const TARGET = 6.283185307179586;
-        const targetY = h - ((TARGET - min) / range) * h;
-        if (targetY >= 0 && targetY <= h) {
-          sctx.beginPath();
-          sctx.moveTo(0, targetY);
-          sctx.lineTo(w, targetY);
-          sctx.strokeStyle = 'rgba(255,255,255,0.15)';
-          sctx.lineWidth = 1;
-          sctx.stroke();
-        }
-
-        // Draw estimate history
-        sctx.beginPath();
-        estimateHistory.forEach((v,i) => {
-          const x = i / (MAX_HISTORY - 1) * w;
-          const y = h - ((v - min) / range) * h;
-          if(i===0) sctx.moveTo(x,y); else sctx.lineTo(x,y);
-        });
-        sctx.strokeStyle = 'rgba(124,58,237,0.9)';
-        sctx.lineWidth = 2;
-        sctx.stroke();
-      }
-
-      // controls
-      clearBtn.addEventListener('click', () => {
-        drawBackground(); drawCircle(); pointsQueue = []; // keep estimate history
-      });
-
-      // Fullscreen toggle
-      let isFullscreen = false;
-      fullscreenBtn.addEventListener('click', () => {
-        isFullscreen = !isFullscreen;
-        if (isFullscreen) {
-          appEl.classList.add('fullscreen');
-          fullscreenBtn.textContent = 'Exit Fullscreen';
-        } else {
-          appEl.classList.remove('fullscreen');
-          fullscreenBtn.textContent = 'Fullscreen';
-        }
-        resize();
-      });
-
-      // Save snapshot
-      saveBtn.addEventListener('click', () => {
-        const link = document.createElement('a');
-        // Create a new canvas to compose the final image
-        const saveCanvas = document.createElement('canvas');
-        const rect = canvas.getBoundingClientRect();
-        saveCanvas.width = rect.width;
-        saveCanvas.height = rect.height;
-        const saveCtx = saveCanvas.getContext('2d');
-        
-        // Draw the visualization
-        saveCtx.drawImage(canvas, 0, 0, saveCanvas.width, saveCanvas.height);
-        
-        // Add text with current estimate
-        saveCtx.font = '16px sans-serif';
-        saveCtx.fillStyle = 'rgba(255,255,255,0.9)';
-        saveCtx.fillText(`τ ≈ ${estimateEl.textContent} (${totalPoints.toLocaleString()} points)`, 20, 30);
-        
-        // Convert to data URL and trigger download
-        link.href = saveCanvas.toDataURL('image/png');
-        link.download = `monte-carlo-tau-${Date.now()}.png`;
-        link.click();
-      });
-
-      // init
-      window.addEventListener('resize', resize);
-      resize();
-      drawFrame();
-
-      // initial background
-      drawBackground(); drawCircle();
-    </script>
-  </body>
+    // ---------- Init ----------
+    resize();
+    updateHUD();
+    drawAll();
+    rafId = requestAnimationFrame(loop);
+  </script>
+</body>
 </html>
