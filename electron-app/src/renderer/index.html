@@ -11,7 +11,7 @@
     }
     html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
     body{background:linear-gradient(180deg,var(--bg),#071226);color:var(--ink);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
-    .app{width:100%;max-width:1100px;display:flex;gap:20px}
+    .app{width:100%;max-width:1100px;display:flex;gap:20px;position:relative}
     .panel{background:linear-gradient(180deg,var(--card),#07121a);border-radius:12px;padding:16px;box-shadow:0 6px 24px rgba(2,6,23,0.6)}
     .left{flex:1;display:flex;flex-direction:column;gap:12px}
     .right{width:300px;display:flex;flex-direction:column;gap:12px}
@@ -19,7 +19,7 @@
     .muted{color:var(--muted)}
     .title{display:flex;align-items:center;gap:12px}
     .hud{display:flex;gap:12px;flex-wrap:wrap}
-    .stat{background:linear-gradient(180deg,rgba(255,255,255,0.03),transparent);padding:8px 10px;border-radius:8px;min-width:120px}
+    .stat{background:linear-gradient(180deg,rgba(255,255,255,0.03),transparent);padding:8px 10px;border-radius:8px;min-width:140px}
     .big{font-size:22px;font-weight:700}
     .controls{display:flex;gap:8px;align-items:center;margin-top:auto}
     button{background:linear-gradient(180deg,#122433,#0a2a3d);color:var(--ink);border:1px solid rgba(255,255,255,0.05);padding:8px 12px;border-radius:8px;cursor:pointer}
@@ -30,15 +30,55 @@
     .dot{width:10px;height:10px;border-radius:50%}
     .fps{position:absolute;bottom:8px;right:12px;font-size:11px;color:rgba(255,255,255,0.32)}
     .canvasWrap{position:relative}
+    .overlay{
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      background:rgba(2,6,23,0.7); backdrop-filter:blur(4px); border-radius:12px; z-index:10;
+    }
+    .overlayCard{
+      background:linear-gradient(180deg,var(--card),#0a1220);
+      border:1px solid rgba(255,255,255,0.06);
+      padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.4); max-width:520px; text-align:center;
+    }
+    .hidden{display:none}
     @media (max-width:900px){.app{flex-direction:column}.right{width:100%}canvas{height:60vw}}
   </style>
 </head>
 <body>
   <div class="app">
+    <!-- START / END OVERLAYS -->
+    <div id="startOverlay" class="overlay">
+      <div class="overlayCard">
+        <h2 style="margin:0 0 8px">Monte Carlo Tau — Point Shooter</h2>
+        <p class="muted" style="margin:0 0 14px">
+          Goal: come as close as possible to <b>τ = 2π ≈ 6.283185</b> in one minute.<br/>
+          Click inside the square to drop points. The estimate uses your clicks (not random).
+        </p>
+        <div class="legend" style="justify-content:center;margin:8px 0 16px">
+          <span class="dot" style="background:linear-gradient(90deg,var(--ok),#16a34a)"></span><span class="muted">inside circle</span>
+          <span style="width:12px"></span>
+          <span class="dot" style="background:linear-gradient(90deg,var(--bad),#ef4444)"></span><span class="muted">outside</span>
+        </div>
+        <button id="startBtn" class="primary">Start</button>
+      </div>
+    </div>
+
+    <div id="endOverlay" class="overlay hidden">
+      <div class="overlayCard">
+        <h2 style="margin:0 0 8px">Time!</h2>
+        <div class="muted">Your result</div>
+        <div style="font-size:26px;font-weight:700;margin:6px 0"><span id="finalTau">-</span></div>
+        <div class="muted">Absolute error |τ − 2π| = <span id="finalErr">-</span></div>
+        <div class="muted" style="margin-top:6px">Inside / Total: <span id="finalCounts">0 / 0</span></div>
+        <div style="margin-top:14px">
+          <button id="restartBtn" class="primary">Restart</button>
+        </div>
+      </div>
+    </div>
+
     <div class="left panel">
       <div class="title">
         <h1>Monte Carlo Tau — Point Shooter</h1>
-        <div style="margin-left:auto" class="muted">Click to drop points. 60s round.</div>
+        <div style="margin-left:auto" class="muted">Minimize |τ_est − 2π| within 60s</div>
       </div>
 
       <div class="hud">
@@ -47,8 +87,8 @@
           <div id="tau" class="big">-</div>
         </div>
         <div class="stat">
-          <div class="muted">Score</div>
-          <div id="score" class="big">0</div>
+          <div class="muted">Absolute error</div>
+          <div id="error" class="big">-</div>
         </div>
         <div class="stat">
           <div class="muted">Inside / Total</div>
@@ -74,10 +114,9 @@
       </div>
 
       <div class="controls">
-        <button id="startBtn" class="primary">Start</button>
         <button id="resetBtn">Reset</button>
         <button id="saveBtn">Save Snapshot</button>
-        <span class="muted" style="margin-left:auto">Tip: aim near the circle edge for risk/reward.</span>
+        <span class="muted" style="margin-left:auto">Tip: ensure both inside and outside hits.</span>
       </div>
     </div>
 
@@ -85,17 +124,16 @@
       <div class="stat">
         <div class="muted">Rules</div>
         <ul class="muted" style="margin:8px 0 0 18px;line-height:1.4">
-          <li>Click anywhere inside the square to drop a point.</li>
-          <li><span style="color:var(--ok)">Inside</span>: +10 pts</li>
-          <li><span style="color:var(--bad)">Outside</span>: −5 pts</li>
-          <li>Round time: 60 seconds</li>
-          <li>τ ≈ 8 · (inside / total)</li>
+          <li>Click inside the square to drop a point.</li>
+          <li>Round time: 60 seconds.</li>
+          <li>Estimate: τ ≈ 8 · (inside / total).</li>
+          <li>Goal: minimize |τ_est − 2π|.</li>
         </ul>
       </div>
       <div class="stat">
-        <div class="muted">Notes</div>
+        <div class="muted">Note</div>
         <p class="muted" style="margin:8px 0 0">
-          This is a game, so points are <em>not random</em>; the τ estimate reflects your shots (biased). 😄
+          Because you pick the points, the estimate is biased—use your intuition to balance inside/outside density.
         </p>
       </div>
     </div>
@@ -119,43 +157,47 @@
     window.addEventListener('resize', resize);
 
     // ---------- Geometry helpers ----------
-    // Square = [-1,1]^2; Circle: x^2 + y^2 <= 1
     function getCanvasRect() { return canvas.getBoundingClientRect(); }
     function centerAndScale() {
       const r = getCanvasRect(), w = r.width, h = r.height;
       const s = 0.5 * Math.min(w,h);
-      const cx = 0.5 * w, cy = 0.5 * h;
-      return {cx, cy, s, w, h};
+      return { cx: 0.5*w, cy: 0.5*h, s, w, h };
     }
     function toCanvas(p) {
       const {cx, cy, s} = centerAndScale();
-      const x = cx + p[0] * s;
-      const y = cy - p[1] * s;
-      return [x,y];
+      return [cx + p[0]*s, cy - p[1]*s];
     }
     function fromCanvas(x,y) {
       const {cx, cy, s} = centerAndScale();
-      return [(x - cx)/s, -(y - cy)/s]; // normalized to [-1,1]
+      return [(x - cx)/s, -(y - cy)/s];
     }
 
     // ---------- Game state ----------
+    const TWO_PI = Math.PI * 2;
     const tauEl = document.getElementById('tau');
-    const scoreEl = document.getElementById('score');
+    const errEl = document.getElementById('error');
     const countsEl = document.getElementById('counts');
     const timeEl = document.getElementById('time');
-    const startBtn = document.getElementById('startBtn');
-    const resetBtn = document.getElementById('resetBtn');
     const saveBtn = document.getElementById('saveBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const startOverlay = document.getElementById('startOverlay');
+    const startBtn = document.getElementById('startBtn');
+    const endOverlay = document.getElementById('endOverlay');
+    const restartBtn = document.getElementById('restartBtn');
+    const finalTauEl = document.getElementById('finalTau');
+    const finalErrEl = document.getElementById('finalErr');
+    const finalCountsEl = document.getElementById('finalCounts');
 
     let running = false;
-    let timeLeft = 60.0; // seconds
+    let timeLeft = 60.0;
     let lastTS = 0;
-    let total = 0, inside = 0, score = 0;
+    let total = 0, inside = 0;
 
-    // particles for click feedback
+    // shots for visual feedback
     const shots = []; // {x,y,inside,life}
 
-    // ---------- Sounds (tiny beeps) ----------
+    // tiny beeps
     const ACtx = (window.AudioContext || window.webkitAudioContext) ? new (window.AudioContext || window.webkitAudioContext)() : null;
     function beep(freq=440, dur=0.05, gain=0.03) {
       if(!ACtx) return;
@@ -165,8 +207,7 @@
       osc.frequency.value = freq;
       g.gain.value = gain;
       osc.connect(g).connect(ACtx.destination);
-      osc.start(t0);
-      osc.stop(t0 + dur);
+      osc.start(t0); osc.stop(t0 + dur);
     }
 
     // ---------- Drawing ----------
@@ -176,9 +217,8 @@
       ctx.fillRect(0,0,r.width,r.height);
     }
     function drawBoard() {
-      const {cx, cy, s, w, h} = centerAndScale();
-
-      // square border
+      const {cx, cy, s} = centerAndScale();
+      // square
       ctx.strokeStyle = 'rgba(255,255,255,0.15)';
       ctx.lineWidth = 2;
       ctx.strokeRect(cx - s, cy - s, 2*s, 2*s);
@@ -190,16 +230,14 @@
       grad.addColorStop(0,'rgba(124,58,237,0.06)');
       grad.addColorStop(1,'rgba(2,6,23,0)');
       ctx.fillStyle = grad; ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-      ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1.5; ctx.stroke();
 
-      // axes (light)
+      // axes
       ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(cx - s, cy); ctx.lineTo(cx + s, cy); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(cx, cy - s); ctx.lineTo(cx, cy + s); ctx.stroke();
     }
     function drawShots(dt) {
-      // update & render simple fading squares
       for (let i = shots.length - 1; i >= 0; i--) {
         const p = shots[i];
         p.life -= dt;
@@ -210,18 +248,18 @@
         ctx.globalAlpha = 1;
       }
     }
-
     function drawAll() {
       drawBackground();
       drawBoard();
-      drawShots(0); // just render current
+      drawShots(0);
     }
 
     // ---------- HUD ----------
     function updateHUD() {
       const tau = total > 0 ? 8 * (inside / total) : NaN;
+      const err = isNaN(tau) ? NaN : Math.abs(tau - TWO_PI);
       tauEl.textContent = isNaN(tau) ? '-' : tau.toFixed(6);
-      scoreEl.textContent = score.toString();
+      errEl.textContent = isNaN(err) ? '-' : err.toFixed(6);
       countsEl.textContent = `${inside} / ${total}`;
       timeEl.textContent = `${timeLeft.toFixed(1)}s`;
     }
@@ -233,7 +271,6 @@
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      // check within square bounds; ignore clicks outside the square
       const {cx, cy, s} = centerAndScale();
       if (x < cx - s || x > cx + s || y < cy - s || y > cy + s) return;
 
@@ -241,8 +278,7 @@
       const hit = (nx*nx + ny*ny) <= 1.0;
 
       total += 1;
-      if (hit) { inside += 1; score += 10; beep(660, 0.04, 0.04); }
-      else     { score -= 5;  beep(200, 0.05, 0.035); }
+      if (hit) { inside += 1; beep(660, 0.04, 0.04); } else { beep(200, 0.05, 0.035); }
 
       shots.push({ x, y, inside: hit, life: 1.0 });
       updateHUD();
@@ -250,52 +286,77 @@
 
     // ---------- Game loop ----------
     let rafId = null;
-    let fpsFrames = 0, fpsLast = performance.now();
-
     function loop(ts) {
       if (!lastTS) lastTS = ts;
-      const dt = Math.min(0.05, (ts - lastTS)/1000); // clamp
+      const dt = Math.min(0.05, (ts - lastTS)/1000);
       lastTS = ts;
 
-      // time & end condition
       if (running) {
         timeLeft = Math.max(0, timeLeft - dt);
         if (timeLeft <= 0) {
           running = false;
+          showEnd();
         }
       }
 
-      // draw
       drawBackground();
       drawBoard();
       drawShots(dt);
       updateHUD();
 
-      // FPS meter
-      fpsFrames++;
-      const now = ts;
-      if (now - fpsLast >= 1000) {
-        const fps = Math.round((fpsFrames * 1000) / (now - fpsLast));
-        fpsEl.textContent = `${fps} FPS`;
-        fpsFrames = 0; fpsLast = now;
-      }
+      // FPS
+      fpsCounter(ts);
 
       rafId = requestAnimationFrame(loop);
     }
 
-    // ---------- Controls ----------
-    startBtn.addEventListener('click', async () => {
-      if (ACtx && ACtx.state === 'suspended') { try { await ACtx.resume(); } catch{} }
-      if (!running && timeLeft <= 0) { // restart after end
-        timeLeft = 60.0; total = inside = score = 0; shots.length = 0;
+    // FPS meter
+    let fpsLast = performance.now(), fpsFrames = 0;
+    function fpsCounter(ts){
+      fpsFrames++;
+      if (ts - fpsLast >= 1000) {
+        const fps = Math.round((fpsFrames * 1000) / (ts - fpsLast));
+        fpsEl.textContent = `${fps} FPS`;
+        fpsFrames = 0; fpsLast = ts;
       }
+    }
+
+    // ---------- Overlays & Controls ----------
+    async function startGame() {
+      if (ACtx && ACtx.state === 'suspended') { try { await ACtx.resume(); } catch{} }
+      resetState();
+      startOverlay.classList.add('hidden');
+      endOverlay.classList.add('hidden');
       running = true;
+    }
+
+    function resetState() {
+      running = false;
+      timeLeft = 60.0;
+      total = 0; inside = 0;
+      shots.length = 0;
+      drawAll(); updateHUD();
+    }
+
+    function showEnd() {
+      const tau = total > 0 ? 8 * (inside / total) : NaN;
+      const err = isNaN(tau) ? NaN : Math.abs(tau - TWO_PI);
+      finalTauEl.textContent = isNaN(tau) ? '-' : tau.toFixed(6);
+      finalErrEl.textContent = isNaN(err) ? '-' : err.toFixed(6);
+      finalCountsEl.textContent = `${inside} / ${total}`;
+      endOverlay.classList.remove('hidden');
+    }
+
+    startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', () => {
+      endOverlay.classList.add('hidden');
+      startGame();
     });
 
     resetBtn.addEventListener('click', () => {
-      running = false;
-      timeLeft = 60.0; total = inside = score = 0; shots.length = 0;
-      drawAll(); updateHUD();
+      startOverlay.classList.remove('hidden');
+      endOverlay.classList.add('hidden');
+      resetState();
     });
 
     // Save PNG snapshot (hi-res)
@@ -306,22 +367,22 @@
       out.height = Math.floor(rect.height * DPR);
       const octx = out.getContext('2d');
       octx.setTransform(DPR,0,0,DPR,0,0);
-      // redraw current board & shots into offscreen
-      // (cheaper: draw the on-screen canvas)
+      // easiest: copy current canvas
       octx.drawImage(canvas, 0, 0, rect.width, rect.height);
+      // overlay stats
+      const tau = total > 0 ? 8 * (inside / total) : NaN;
+      const err = isNaN(tau) ? NaN : Math.abs(tau - TWO_PI);
       octx.font = '16px system-ui,Segoe UI,Roboto,Arial';
       octx.fillStyle = 'rgba(255,255,255,0.9)';
-      const tauText = document.getElementById('tau').textContent;
-      octx.fillText(`τ ≈ ${tauText} (inside/total = ${inside}/${total}, score=${score})`, 16, 28);
+      octx.fillText(`τ ≈ ${isNaN(tau) ? '-' : tau.toFixed(6)} | error=${isNaN(err)?'-':err.toFixed(6)} | inside/total=${inside}/${total}`, 16, 28);
       const a = document.createElement('a');
-      a.href = out.toDataURL('image/png'); a.download = `point-shooter-${Date.now()}.png`; a.click();
+      a.href = out.toDataURL('image/png'); a.download = `tau-point-shooter-${Date.now()}.png`; a.click();
     });
 
     // ---------- Init ----------
     resize();
-    updateHUD();
-    drawAll();
-    rafId = requestAnimationFrame(loop);
+    resetState();
+    requestAnimationFrame(loop);
   </script>
 </body>
 </html>
