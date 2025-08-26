@@ -1,11 +1,16 @@
 {
   "name": "montecarlo-tau-electron",
+  "productName": "Monte Carlo Tau",
   "version": "0.1.0",
+  "description": "Interactive Monte Carlo τ (2π) point-shooter estimator game.",
+  "author": "Christina Ertural",
   "main": "dist/main.js",
   "scripts": {
     "start": "electron-forge start",
     "build": "tsc -p . && npm run copy-renderer",
     "copy-renderer": "cpx \"src/renderer/**\" dist/renderer",
+    "prepackage": "npm run build",
+    "premake": "npm run build",
     "package": "electron-forge package",
     "make": "electron-forge make"
   },
