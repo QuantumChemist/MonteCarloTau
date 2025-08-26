@@ -7,7 +7,9 @@
   <style>
     :root{
       --bg:#0f1724; --card:#0b1220; --muted:#9aa4b2; --accent:#7c3aed;
-      --ok:#34d399; --bad:#fb7185; --ink:#e6eef8;
+      --ok:#7c3aed; /* inside = violet */
+      --bad:#fb7185; /* outside = pink */
+      --ink:#e6eef8;
     }
     html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
     body{background:linear-gradient(180deg,var(--bg),#071226);color:var(--ink);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
@@ -65,9 +67,9 @@
           Click inside the square to drop points. Balance inside/outside density.
         </p>
         <div class="legend" style="justify-content:center;margin:8px 0 12px">
-          <span class="dot" style="background:linear-gradient(90deg,var(--ok),#d111a1)"></span><span class="muted">inside circle</span>
+          <span class="dot" style="background:var(--ok)"></span><span class="muted">inside circle</span>
           <span style="width:12px"></span>
-          <span class="dot" style="background:linear-gradient(90deg,var(--bad),#7909ce)"></span><span class="muted">outside</span>
+          <span class="dot" style="background:var(--bad)"></span><span class="muted">outside</span>
         </div>
         <div class="overlayRow">
           <label class="small">Name (optional):</label>
@@ -125,10 +127,10 @@
       </div>
 
       <div class="legend">
-        <span class="dot" style="background:linear-gradient(90deg,var(--ok),#16a34a)"></span>
+        <span class="dot" style="background:var(--ok)"></span>
         <span class="muted">inside</span>
         <span style="width:12px"></span>
-        <span class="dot" style="background:linear-gradient(90deg,var(--bad),#ef4444)"></span>
+        <span class="dot" style="background:var(--bad)"></span>
         <span class="muted">outside</span>
       </div>
 
@@ -185,10 +187,6 @@
       const s = 0.5 * Math.min(w,h);
       return { cx: 0.5*w, cy: 0.5*h, s, w, h };
     }
-    function toCanvas(p) {
-      const {cx, cy, s} = centerAndScale();
-      return [cx + p[0]*s, cy - p[1]*s];
-    }
     function fromCanvas(x,y) {
       const {cx, cy, s} = centerAndScale();
       return [(x - cx)/s, -(y - cy)/s];
@@ -224,19 +222,6 @@
     // shots for visual feedback
     const shots = []; // {x,y,inside,life}
 
-    // tiny beeps
-    const ACtx = (window.AudioContext || window.webkitAudioContext) ? new (window.AudioContext || window.webkitAudioContext)() : null;
-    function beep(freq=440, dur=0.05, gain=0.03) {
-      if(!ACtx) return;
-      const t0 = ACtx.currentTime;
-      const osc = ACtx.createOscillator();
-      const g = ACtx.createGain();
-      osc.frequency.value = freq;
-      g.gain.value = gain;
-      osc.connect(g).connect(ACtx.destination);
-      osc.start(t0); osc.stop(t0 + dur);
-    }
-
     // ---------- Highscores ----------
     const HS_KEY = 'tauPointShooterHighscores';
     const hsListEl = document.getElementById('hsList');
@@ -247,18 +232,13 @@
       catch { return []; }
     }
     function saveScores(list){ localStorage.setItem(HS_KEY, JSON.stringify(list)); }
-    function formatTS(t){
-      const d = new Date(t);
-      return d.toLocaleString();
-    }
     function addScore(entry){
       const arr = loadScores();
       arr.push(entry);
       arr.sort((a,b) => a.err - b.err); // lower error is better
-      const TOP_N = 10;
       const rank = arr.findIndex(x => x === entry) + 1;
-      saveScores(arr.slice(0, TOP_N));
-      return { rank, list: arr.slice(0, TOP_N) };
+      saveScores(arr.slice(0,10));
+      return { rank, list: arr.slice(0,10) };
     }
     function renderScores(){
       const arr = loadScores();
@@ -278,7 +258,7 @@
             <span>τ=${s.tau.toFixed(6)}</span>
             <span>err=${s.err.toFixed(6)}</span>
           </div>
-          <div class="small">${s.inside}/${s.total} • ${formatTS(s.ts)}</div>
+          <div class="small">${s.inside}/${s.total} • ${new Date(s.ts).toLocaleString()}</div>
         `;
         hsListEl.appendChild(li);
       });
@@ -310,7 +290,7 @@
       ctx.fillStyle = grad; ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1.5; ctx.stroke();
 
-      // axes
+      // axes (subtle)
       ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(cx - s, cy); ctx.lineTo(cx + s, cy); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(cx, cy - s); ctx.lineTo(cx, cy + s); ctx.stroke();
@@ -321,7 +301,7 @@
         p.life -= dt;
         if (p.life <= 0) { shots.splice(i,1); continue; }
         ctx.globalAlpha = Math.max(0, p.life);
-        ctx.fillStyle = p.inside ? 'violet' : 'pink';
+        ctx.fillStyle = p.inside ? '#7c3aed' : '#fb7185'; // violet & pink
         ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
         ctx.globalAlpha = 1;
       }
@@ -359,7 +339,7 @@
       const hit = (nx*nx + ny*ny) <= 1.0;
 
       total += 1;
-      if (hit) { inside += 1; beep(660, 0.04, 0.04); } else { beep(200, 0.05, 0.035); }
+      if (hit) inside += 1;
 
       shots.push({ x, y, inside: hit, life: 1.0 });
       updateHUD();
@@ -367,6 +347,7 @@
 
     // ---------- Game loop ----------
     let rafId = null;
+    let lastFpsTS = performance.now(), fpsCount = 0;
     function loop(ts) {
       if (!lastTS) lastTS = ts;
       const dt = Math.min(0.05, (ts - lastTS)/1000);
@@ -386,25 +367,18 @@
       updateHUD();
 
       // FPS
-      fpsCounter(ts);
+      fpsCount++;
+      if (ts - lastFpsTS >= 1000) {
+        const fps = Math.round((fpsCount * 1000) / (ts - lastFpsTS));
+        fpsEl.textContent = `${fps} FPS`;
+        fpsCount = 0; lastFpsTS = ts;
+      }
 
       rafId = requestAnimationFrame(loop);
     }
 
-    // FPS meter
-    let fpsLast = performance.now(), fpsFrames = 0;
-    function fpsCounter(ts){
-      fpsFrames++;
-      if (ts - fpsLast >= 1000) {
-        const fps = Math.round((fpsFrames * 1000) / (ts - fpsLast));
-        fpsEl.textContent = `${fps} FPS`;
-        fpsFrames = 0; fpsLast = ts;
-      }
-    }
-
     // ---------- Overlays & Controls ----------
     async function startGame() {
-      if (ACtx && ACtx.state === 'suspended') { try { await ACtx.resume(); } catch{} }
       resetState();
       startOverlay.classList.add('hidden');
       endOverlay.classList.add('hidden');
@@ -435,7 +409,7 @@
           tau, err, inside, total,
           ts: Date.now()
         };
-        const { rank, list } = addScore(entry);
+        const { rank } = addScore(entry);
         renderScores();
         rankText = `#${rank}`;
       }
@@ -443,25 +417,7 @@
       endOverlay.classList.remove('hidden');
     }
 
-    startBtn.addEventListener('click', startGame);
-    restartBtn.addEventListener('click', () => {
-      endOverlay.classList.add('hidden');
-      startGame();
-    });
-    menuBtn.addEventListener('click', () => {
-      endOverlay.classList.add('hidden');
-      startOverlay.classList.remove('hidden');
-      resetState();
-    });
-
-    resetBtn.addEventListener('click', () => {
-      startOverlay.classList.remove('hidden');
-      endOverlay.classList.add('hidden');
-      resetState();
-    });
-
-    // Save PNG snapshot (hi-res)
-    saveBtn.addEventListener('click', () => {
+    document.getElementById('saveBtn').addEventListener('click', () => {
       const rect = getCanvasRect();
       const out = document.createElement('canvas');
       out.width = Math.floor(rect.width * DPR);
@@ -476,6 +432,22 @@
       octx.fillText(`τ ≈ ${isNaN(tau) ? '-' : tau.toFixed(6)} | error=${isNaN(err)?'-':err.toFixed(6)} | inside/total=${inside}/${total}`, 16, 28);
       const a = document.createElement('a');
       a.href = out.toDataURL('image/png'); a.download = `tau-point-shooter-${Date.now()}.png`; a.click();
+    });
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      endOverlay.classList.add('hidden');
+      startGame();
+    });
+    document.getElementById('menuBtn').addEventListener('click', () => {
+      endOverlay.classList.add('hidden');
+      startOverlay.classList.remove('hidden');
+      resetState();
+    });
+    resetBtn.addEventListener('click', () => {
+      startOverlay.classList.remove('hidden');
+      endOverlay.classList.add('hidden');
+      resetState();
     });
 
     // ---------- Init ----------
