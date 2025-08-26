@@ -11,7 +11,6 @@
       --bad:#fb7185; /* outside = pink */
       --ink:#e6eef8;
     }
-    .spark { width:100%; height:70px; display:block; background:transparent; }
     html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
     body{background:linear-gradient(180deg,var(--bg),#071226);color:var(--ink);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
     .app{width:100%;max-width:1100px;display:flex;gap:20px;position:relative}
@@ -52,8 +51,10 @@
     ol.hs{margin:8px 0 0 20px; padding:0}
     ol.hs li{margin:4px 0; color:var(--muted)}
     .hs-line{display:flex;justify-content:space-between;gap:8px}
-    .hs-name{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .hs-name{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .small{font-size:12px;color:var(--muted)}
+    /* sparkline */
+    .spark{width:100%;height:70px;display:block;background:transparent}
     @media (max-width:900px){.app{flex-direction:column}.right{width:100%}canvas{height:60vw}}
   </style>
 </head>
@@ -163,6 +164,7 @@
         <div class="small" style="margin-top:6px">Stored locally in your browser.</div>
       </div>
 
+      <!-- τ evolution sparkline -->
       <div class="stat">
         <div class="muted" style="display:flex;align-items:center;gap:6px">
           <span>τ evolution (last 120)</span>
@@ -179,69 +181,23 @@
     const fpsEl = document.getElementById('fps');
     let DPR = 1;
 
-    const spark = document.getElementById('spark');
-    const sctx  = spark.getContext('2d');
-    let estimateHistory = [];
-    const MAX_HISTORY = 120;
-
     function resize() {
       DPR = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
-      canvas.width  = Math.floor(rect.width  * DPR);
+      canvas.width = Math.floor(rect.width * DPR);
       canvas.height = Math.floor(rect.height * DPR);
-      ctx.setTransform(DPR,0,0,DPR,0,0);
-      drawAll();
+      ctx.setTransform(DPR,0,0,DPR,0,0); // draw in CSS px
 
-      // spark DPR
+      // scale sparkline
       const r2 = spark.getBoundingClientRect();
       spark.width  = Math.floor(r2.width  * DPR);
       spark.height = Math.floor(r2.height * DPR);
       sctx.setTransform(DPR,0,0,DPR,0,0);
+
+      drawAll();
       drawSpark();
     }
-
-    function drawSpark(){
-      const r = spark.getBoundingClientRect();
-      const w = r.width, h = r.height;
-      sctx.clearRect(0,0,w,h);
-      if (estimateHistory.length < 2) return;
-
-      const min = Math.min(...estimateHistory);
-      const max = Math.max(...estimateHistory);
-      const range = (max - min) || 1e-6;
-
-      // target line at τ = 2π
-      const targetY = h - ((TWO_PI - min) / range) * h;
-      if (targetY >= 0 && targetY <= h) {
-        sctx.beginPath();
-        sctx.moveTo(0, targetY);
-        sctx.lineTo(w, targetY);
-        sctx.strokeStyle = 'rgba(255,255,255,0.15)';
-        sctx.lineWidth = 1;
-        sctx.stroke();
-      }
-
-      // history polyline
-      sctx.beginPath();
-      estimateHistory.forEach((v, i) => {
-        const x = (i / (MAX_HISTORY - 1)) * w;
-        const y = h - ((v - min) / range) * h;
-        if (i === 0) sctx.moveTo(x, y); else sctx.lineTo(x, y);
-      });
-      // use your accent color if available
-      const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7c3aed';
-      sctx.strokeStyle = accent;
-      sctx.lineWidth = 2;
-      sctx.stroke();
-    }
-
-    function pushTauHistory(){
-      const t = currentTau();
-      if (!isNaN(t)) {
-        if (estimateHistory.length >= MAX_HISTORY) estimateHistory.shift();
-        estimateHistory.push(t);
-      }
-    }
+    window.addEventListener('resize', resize);
 
     // ---------- Geometry helpers ----------
     function getCanvasRect() { return canvas.getBoundingClientRect(); }
@@ -286,31 +242,25 @@
     // shots for visual feedback
     const shots = []; // {x,y,inside,life}
 
-    // ----- Highscores -----
+    // ---------- Highscores ----------
     const HS_KEY = 'tauPointShooterHighscores';
-    const hsListEl  = document.getElementById('hsList');
+    const hsListEl = document.getElementById('hsList');
     const clearHSEl = document.getElementById('clearHS');
 
-    function loadScores() {
-      try { return JSON.parse(localStorage.getItem(HS_KEY) || '[]'); }
-      catch { return []; }
-    }
-    function saveScores(list) {
-      try { localStorage.setItem(HS_KEY, JSON.stringify(list)); } catch {}
-    }
-    function addScore(entry) {
+    function loadScores(){ try { return JSON.parse(localStorage.getItem(HS_KEY) || '[]'); } catch { return []; } }
+    function saveScores(list){ try { localStorage.setItem(HS_KEY, JSON.stringify(list)); } catch {} }
+    function addScore(entry){
       const arr = loadScores();
       arr.push(entry);
-      arr.sort((a,b) => a.err - b.err);          // lower error is better
+      arr.sort((a,b) => a.err - b.err); // lower error is better
       const rank = arr.findIndex(x => x === entry) + 1;
-      saveScores(arr.slice(0, 10));               // keep top 10
+      saveScores(arr.slice(0,10));
       return { rank };
     }
-
-    function renderScores() {
+    function renderScores(){
       const arr = loadScores();
       hsListEl.innerHTML = '';
-      if (!arr.length) {
+      if (!arr.length){
         const li = document.createElement('li');
         li.textContent = 'No scores yet — be the first!';
         hsListEl.appendChild(li);
@@ -318,7 +268,7 @@
       }
       arr.forEach((s) => {
         const li = document.createElement('li');
-        const name = s.name?.trim() || 'Player';
+        const name = s.name && s.name.trim() ? s.name.trim() : 'Player';
         li.innerHTML = `
           <div class="hs-line">
             <span class="hs-name">${name}</span>
@@ -330,13 +280,8 @@
         hsListEl.appendChild(li);
       });
     }
-
-    // Clear button — wipe store, then re-render
     clearHSEl.addEventListener('click', () => {
-      try {
-        // set to empty array (more predictable than removeItem in some setups)
-        localStorage.setItem(HS_KEY, '[]');
-      } catch {}
+      try { localStorage.setItem(HS_KEY, '[]'); } catch {}
       renderScores();
     });
 
@@ -362,14 +307,13 @@
       osc.start(t0);
       osc.stop(t0 + dur);
     }
-
     soundBtn.addEventListener('click', async () => {
       SOUND_ON = !SOUND_ON;
       soundBtn.textContent = `Sound: ${SOUND_ON ? 'On' : 'Off'}`;
       if (SOUND_ON) await ensureAudio();
     });
 
-    // ---------- Drawing ----------
+    // ---------- Drawing (board & shots) ----------
     function drawBackground() {
       const r = getCanvasRect();
       ctx.fillStyle = '#06101a';
@@ -413,6 +357,53 @@
       drawShots(0);
     }
 
+    // ---------- τ evolution sparkline ----------
+    const spark = document.getElementById('spark');
+    const sctx  = spark.getContext('2d');
+    let estimateHistory = [];
+    const MAX_HISTORY = 120;
+
+    function pushTauHistory(){
+      const t = currentTau();
+      if (!isNaN(t)) {
+        if (estimateHistory.length >= MAX_HISTORY) estimateHistory.shift();
+        estimateHistory.push(t);
+      }
+    }
+    function drawSpark(){
+      const r = spark.getBoundingClientRect();
+      const w = r.width, h = r.height;
+      sctx.clearRect(0,0,w,h);
+      if (estimateHistory.length < 2) return;
+
+      const min = Math.min(...estimateHistory);
+      const max = Math.max(...estimateHistory);
+      const range = (max - min) || 1e-6;
+
+      // target line at 2π
+      const targetY = h - ((TWO_PI - min) / range) * h;
+      if (targetY >= 0 && targetY <= h) {
+        sctx.beginPath();
+        sctx.moveTo(0, targetY);
+        sctx.lineTo(w, targetY);
+        sctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        sctx.lineWidth = 1;
+        sctx.stroke();
+      }
+
+      // history polyline
+      sctx.beginPath();
+      estimateHistory.forEach((v,i) => {
+        const x = (i / (MAX_HISTORY - 1)) * w;
+        const y = h - ((v - min) / range) * h;
+        if (i===0) sctx.moveTo(x,y); else sctx.lineTo(x,y);
+      });
+      const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7c3aed';
+      sctx.strokeStyle = accent;
+      sctx.lineWidth = 2;
+      sctx.stroke();
+    }
+
     // ---------- HUD ----------
     function currentTau(){ return total > 0 ? 8 * (inside / total) : NaN; }
     function currentErr(){ const t = currentTau(); return isNaN(t) ? NaN : Math.abs(t - TWO_PI); }
@@ -440,11 +431,13 @@
       const hit = (nx*nx + ny*ny) <= 1.0;
 
       total += 1;
-      if (hit) { inside += 1; beep(660, 0.04, 0.04); }  // inside: higher beep
-      else     { beep(220, 0.06, 0.035); }              // outside: lower beep
+      if (hit) { inside += 1; beep(660, 0.04, 0.04); }
+      else     { beep(220, 0.06, 0.035); }
 
       shots.push({ x, y, inside: hit, life: 1.0 });
       updateHUD();
+      pushTauHistory();
+      drawSpark();
     });
 
     // ---------- Game loop ----------
@@ -467,8 +460,6 @@
       drawBoard();
       drawShots(dt);
       updateHUD();
-      pushTauHistory();
-      drawSpark();
 
       // FPS
       fpsCount++;
@@ -495,18 +486,17 @@
       timeLeft = ROUND_TIME;
       total = 0; inside = 0;
       shots.length = 0;
-      estimateHistory = [];      // clear history
+      estimateHistory = []; // clear τ history
       drawAll(); updateHUD();
-      drawSpark();               // clear spark
+      drawSpark();
     }
 
-
     function showEndAndRecord() {
-      const tau = currentTau();
-      const err = currentErr();
-
       pushTauHistory();
       drawSpark();
+
+      const tau = currentTau();
+      const err = currentErr();
 
       finalTauEl.textContent = isNaN(tau) ? '-' : tau.toFixed(6);
       finalErrEl.textContent = isNaN(err) ? '-' : err.toFixed(6);
@@ -528,6 +518,7 @@
       endOverlay.classList.remove('hidden');
     }
 
+    // Snapshot
     document.getElementById('saveBtn').addEventListener('click', () => {
       const rect = getCanvasRect();
       const out = document.createElement('canvas');
@@ -545,6 +536,7 @@
       a.href = out.toDataURL('image/png'); a.download = `tau-point-shooter-${Date.now()}.png`; a.click();
     });
 
+    // Buttons
     document.getElementById('startBtn').addEventListener('click', startGame);
     document.getElementById('restartBtn').addEventListener('click', () => {
       endOverlay.classList.add('hidden');
@@ -562,9 +554,9 @@
     });
 
     // ---------- Init ----------
+    renderScores();
     resize();
     resetState();
-    renderScores();
     requestAnimationFrame(loop);
   </script>
 </body>
