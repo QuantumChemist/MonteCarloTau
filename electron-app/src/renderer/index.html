@@ -194,7 +194,7 @@
         batch.forEach(item => {
           const [px,py] = toCanvas(item.p);
           ctx.beginPath();
-          ctx.fillStyle = item.inside ? 'rgba(52,211,153,0.9)' : 'rgba(251,113,133,0.9)';
+          ctx.fillStyle = item.inside ? 'violet' : 'pink';
           ctx.fillRect(px, py, 2, 2);
         });
         requestAnimationFrame(drawFrame);
