@@ -14,7 +14,7 @@
     .app{width:100%;max-width:1100px;display:flex;gap:20px;position:relative}
     .panel{background:linear-gradient(180deg,var(--card),#07121a);border-radius:12px;padding:16px;box-shadow:0 6px 24px rgba(2,6,23,0.6)}
     .left{flex:1;display:flex;flex-direction:column;gap:12px}
-    .right{width:300px;display:flex;flex-direction:column;gap:12px}
+    .right{width:320px;display:flex;flex-direction:column;gap:12px}
     h1{font-size:18px;margin:0}
     .muted{color:var(--muted)}
     .title{display:flex;align-items:center;gap:12px}
@@ -37,9 +37,20 @@
     .overlayCard{
       background:linear-gradient(180deg,var(--card),#0a1220);
       border:1px solid rgba(255,255,255,0.06);
-      padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.4); max-width:520px; text-align:center;
+      padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.4); max-width:560px; text-align:center;
     }
+    .overlayRow{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:10px}
+    .input{
+      background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08);
+      color:var(--ink); padding:8px 10px; border-radius:8px; outline:none; min-width:200px;
+    }
+    .hl{font-weight:700;color:var(--accent)}
     .hidden{display:none}
+    ol.hs{margin:8px 0 0 20px; padding:0}
+    ol.hs li{margin:4px 0; color:var(--muted)}
+    .hs-line{display:flex;justify-content:space-between;gap:8px}
+    .hs-name{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .small{font-size:12px;color:var(--muted)}
     @media (max-width:900px){.app{flex-direction:column}.right{width:100%}canvas{height:60vw}}
   </style>
 </head>
@@ -49,16 +60,22 @@
     <div id="startOverlay" class="overlay">
       <div class="overlayCard">
         <h2 style="margin:0 0 8px">Monte Carlo Tau — Point Shooter</h2>
-        <p class="muted" style="margin:0 0 14px">
-          Goal: come as close as possible to <b>τ = 2π ≈ 6.283185</b> in one minute.<br/>
-          Click inside the square to drop points. The estimate uses your clicks (not random).
+        <p class="muted" style="margin:0 0 10px">
+          Goal: get as close as possible to <b>τ = 2π ≈ 6.283185</b> in <b>30 seconds</b>.<br/>
+          Click inside the square to drop points. Balance inside/outside density.
         </p>
-        <div class="legend" style="justify-content:center;margin:8px 0 16px">
+        <div class="legend" style="justify-content:center;margin:8px 0 12px">
           <span class="dot" style="background:linear-gradient(90deg,var(--ok),#16a34a)"></span><span class="muted">inside circle</span>
           <span style="width:12px"></span>
           <span class="dot" style="background:linear-gradient(90deg,var(--bad),#ef4444)"></span><span class="muted">outside</span>
         </div>
-        <button id="startBtn" class="primary">Start</button>
+        <div class="overlayRow">
+          <label class="small">Name (optional):</label>
+          <input id="nameInput" class="input" placeholder="Player" maxlength="24"/>
+        </div>
+        <div class="overlayRow">
+          <button id="startBtn" class="primary">Start (30s)</button>
+        </div>
       </div>
     </div>
 
@@ -66,11 +83,13 @@
       <div class="overlayCard">
         <h2 style="margin:0 0 8px">Time!</h2>
         <div class="muted">Your result</div>
-        <div style="font-size:26px;font-weight:700;margin:6px 0"><span id="finalTau">-</span></div>
+        <div style="font-size:26px;font-weight:700;margin:6px 0">τ_est = <span id="finalTau">-</span></div>
         <div class="muted">Absolute error |τ − 2π| = <span id="finalErr">-</span></div>
         <div class="muted" style="margin-top:6px">Inside / Total: <span id="finalCounts">0 / 0</span></div>
-        <div style="margin-top:14px">
+        <div class="muted" style="margin-top:6px">Rank: <span id="finalRank">-</span></div>
+        <div style="margin-top:14px;display:flex;gap:10px;justify-content:center">
           <button id="restartBtn" class="primary">Restart</button>
+          <button id="menuBtn">Back to Menu</button>
         </div>
       </div>
     </div>
@@ -78,7 +97,7 @@
     <div class="left panel">
       <div class="title">
         <h1>Monte Carlo Tau — Point Shooter</h1>
-        <div style="margin-left:auto" class="muted">Minimize |τ_est − 2π| within 60s</div>
+        <div style="margin-left:auto" class="muted">Minimize |τ_est − 2π| within 30s</div>
       </div>
 
       <div class="hud">
@@ -96,7 +115,7 @@
         </div>
         <div class="stat">
           <div class="muted">Time</div>
-          <div id="time" class="big">60.0s</div>
+          <div id="time" class="big">30.0s</div>
         </div>
       </div>
 
@@ -125,16 +144,19 @@
         <div class="muted">Rules</div>
         <ul class="muted" style="margin:8px 0 0 18px;line-height:1.4">
           <li>Click inside the square to drop a point.</li>
-          <li>Round time: 60 seconds.</li>
+          <li>Round time: <b>30 seconds</b>.</li>
           <li>Estimate: τ ≈ 8 · (inside / total).</li>
-          <li>Goal: minimize |τ_est − 2π|.</li>
+          <li>Goal: minimize |τ_est − 2π| (lower is better).</li>
         </ul>
       </div>
+
       <div class="stat">
-        <div class="muted">Note</div>
-        <p class="muted" style="margin:8px 0 0">
-          Because you pick the points, the estimate is biased—use your intuition to balance inside/outside density.
-        </p>
+        <div class="muted" style="display:flex;align-items:center;gap:8px">
+          <span>Highscores (closest to τ)</span>
+          <button id="clearHS" style="margin-left:auto">Clear</button>
+        </div>
+        <ol id="hsList" class="hs"></ol>
+        <div class="small" style="margin-top:6px">Stored locally in your browser.</div>
       </div>
     </div>
   </div>
@@ -174,6 +196,8 @@
 
     // ---------- Game state ----------
     const TWO_PI = Math.PI * 2;
+    const ROUND_TIME = 30.0; // seconds
+
     const tauEl = document.getElementById('tau');
     const errEl = document.getElementById('error');
     const countsEl = document.getElementById('counts');
@@ -183,14 +207,17 @@
 
     const startOverlay = document.getElementById('startOverlay');
     const startBtn = document.getElementById('startBtn');
+    const nameInput = document.getElementById('nameInput');
     const endOverlay = document.getElementById('endOverlay');
     const restartBtn = document.getElementById('restartBtn');
+    const menuBtn = document.getElementById('menuBtn');
     const finalTauEl = document.getElementById('finalTau');
     const finalErrEl = document.getElementById('finalErr');
     const finalCountsEl = document.getElementById('finalCounts');
+    const finalRankEl = document.getElementById('finalRank');
 
     let running = false;
-    let timeLeft = 60.0;
+    let timeLeft = ROUND_TIME;
     let lastTS = 0;
     let total = 0, inside = 0;
 
@@ -209,6 +236,57 @@
       osc.connect(g).connect(ACtx.destination);
       osc.start(t0); osc.stop(t0 + dur);
     }
+
+    // ---------- Highscores ----------
+    const HS_KEY = 'tauPointShooterHighscores';
+    const hsListEl = document.getElementById('hsList');
+    const clearHSEl = document.getElementById('clearHS');
+
+    function loadScores(){
+      try { return JSON.parse(localStorage.getItem(HS_KEY) || '[]'); }
+      catch { return []; }
+    }
+    function saveScores(list){ localStorage.setItem(HS_KEY, JSON.stringify(list)); }
+    function formatTS(t){
+      const d = new Date(t);
+      return d.toLocaleString();
+    }
+    function addScore(entry){
+      const arr = loadScores();
+      arr.push(entry);
+      arr.sort((a,b) => a.err - b.err); // lower error is better
+      const TOP_N = 10;
+      const rank = arr.findIndex(x => x === entry) + 1;
+      saveScores(arr.slice(0, TOP_N));
+      return { rank, list: arr.slice(0, TOP_N) };
+    }
+    function renderScores(){
+      const arr = loadScores();
+      hsListEl.innerHTML = '';
+      if (!arr.length){
+        const li = document.createElement('li');
+        li.textContent = 'No scores yet — be the first!';
+        hsListEl.appendChild(li);
+        return;
+      }
+      arr.forEach((s, i) => {
+        const li = document.createElement('li');
+        const name = s.name && s.name.trim() ? s.name.trim() : 'Player';
+        li.innerHTML = `
+          <div class="hs-line">
+            <span class="hs-name">${i+1}. ${name}</span>
+            <span>τ=${s.tau.toFixed(6)}</span>
+            <span>err=${s.err.toFixed(6)}</span>
+          </div>
+          <div class="small">${s.inside}/${s.total} • ${formatTS(s.ts)}</div>
+        `;
+        hsListEl.appendChild(li);
+      });
+    }
+    clearHSEl.addEventListener('click', () => {
+      localStorage.removeItem(HS_KEY);
+      renderScores();
+    });
 
     // ---------- Drawing ----------
     function drawBackground() {
@@ -255,9 +333,12 @@
     }
 
     // ---------- HUD ----------
+    function currentTau(){ return total > 0 ? 8 * (inside / total) : NaN; }
+    function currentErr(){ const t = currentTau(); return isNaN(t) ? NaN : Math.abs(t - TWO_PI); }
+
     function updateHUD() {
-      const tau = total > 0 ? 8 * (inside / total) : NaN;
-      const err = isNaN(tau) ? NaN : Math.abs(tau - TWO_PI);
+      const tau = currentTau();
+      const err = currentErr();
       tauEl.textContent = isNaN(tau) ? '-' : tau.toFixed(6);
       errEl.textContent = isNaN(err) ? '-' : err.toFixed(6);
       countsEl.textContent = `${inside} / ${total}`;
@@ -295,7 +376,7 @@
         timeLeft = Math.max(0, timeLeft - dt);
         if (timeLeft <= 0) {
           running = false;
-          showEnd();
+          showEndAndRecord();
         }
       }
 
@@ -332,18 +413,33 @@
 
     function resetState() {
       running = false;
-      timeLeft = 60.0;
+      timeLeft = ROUND_TIME;
       total = 0; inside = 0;
       shots.length = 0;
       drawAll(); updateHUD();
     }
 
-    function showEnd() {
-      const tau = total > 0 ? 8 * (inside / total) : NaN;
-      const err = isNaN(tau) ? NaN : Math.abs(tau - TWO_PI);
+    function showEndAndRecord() {
+      const tau = currentTau();
+      const err = currentErr();
+
       finalTauEl.textContent = isNaN(tau) ? '-' : tau.toFixed(6);
       finalErrEl.textContent = isNaN(err) ? '-' : err.toFixed(6);
       finalCountsEl.textContent = `${inside} / ${total}`;
+
+      // record score if valid
+      let rankText = '—';
+      if (!isNaN(err)) {
+        const entry = {
+          name: (nameInput.value || 'Player').slice(0,24),
+          tau, err, inside, total,
+          ts: Date.now()
+        };
+        const { rank, list } = addScore(entry);
+        renderScores();
+        rankText = `#${rank}`;
+      }
+      finalRankEl.textContent = rankText;
       endOverlay.classList.remove('hidden');
     }
 
@@ -351,6 +447,11 @@
     restartBtn.addEventListener('click', () => {
       endOverlay.classList.add('hidden');
       startGame();
+    });
+    menuBtn.addEventListener('click', () => {
+      endOverlay.classList.add('hidden');
+      startOverlay.classList.remove('hidden');
+      resetState();
     });
 
     resetBtn.addEventListener('click', () => {
@@ -367,11 +468,9 @@
       out.height = Math.floor(rect.height * DPR);
       const octx = out.getContext('2d');
       octx.setTransform(DPR,0,0,DPR,0,0);
-      // easiest: copy current canvas
       octx.drawImage(canvas, 0, 0, rect.width, rect.height);
-      // overlay stats
-      const tau = total > 0 ? 8 * (inside / total) : NaN;
-      const err = isNaN(tau) ? NaN : Math.abs(tau - TWO_PI);
+      const tau = currentTau();
+      const err = currentErr();
       octx.font = '16px system-ui,Segoe UI,Roboto,Arial';
       octx.fillStyle = 'rgba(255,255,255,0.9)';
       octx.fillText(`τ ≈ ${isNaN(tau) ? '-' : tau.toFixed(6)} | error=${isNaN(err)?'-':err.toFixed(6)} | inside/total=${inside}/${total}`, 16, 28);
@@ -382,6 +481,7 @@
     // ---------- Init ----------
     resize();
     resetState();
+    renderScores();
     requestAnimationFrame(loop);
   </script>
 </body>
