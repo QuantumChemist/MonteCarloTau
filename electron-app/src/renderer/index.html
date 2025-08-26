@@ -11,6 +11,7 @@
       --bad:#fb7185; /* outside = pink */
       --ink:#e6eef8;
     }
+    .spark { width:100%; height:70px; display:block; background:transparent; }
     html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
     body{background:linear-gradient(180deg,var(--bg),#071226);color:var(--ink);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
     .app{width:100%;max-width:1100px;display:flex;gap:20px;position:relative}
@@ -161,6 +162,13 @@
         <ol id="hsList" class="hs"></ol>
         <div class="small" style="margin-top:6px">Stored locally in your browser.</div>
       </div>
+
+      <div class="stat">
+        <div class="muted" style="display:flex;align-items:center;gap:6px">
+          <span>τ evolution (last 120)</span>
+        </div>
+        <canvas id="spark" class="spark"></canvas>
+      </div>
     </div>
   </div>
 
@@ -171,15 +179,69 @@
     const fpsEl = document.getElementById('fps');
     let DPR = 1;
 
+    const spark = document.getElementById('spark');
+    const sctx  = spark.getContext('2d');
+    let estimateHistory = [];
+    const MAX_HISTORY = 120;
+
     function resize() {
       DPR = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
-      canvas.width = Math.floor(rect.width * DPR);
+      canvas.width  = Math.floor(rect.width  * DPR);
       canvas.height = Math.floor(rect.height * DPR);
-      ctx.setTransform(DPR,0,0,DPR,0,0); // draw in CSS px
+      ctx.setTransform(DPR,0,0,DPR,0,0);
       drawAll();
+
+      // spark DPR
+      const r2 = spark.getBoundingClientRect();
+      spark.width  = Math.floor(r2.width  * DPR);
+      spark.height = Math.floor(r2.height * DPR);
+      sctx.setTransform(DPR,0,0,DPR,0,0);
+      drawSpark();
     }
-    window.addEventListener('resize', resize);
+
+    function drawSpark(){
+      const r = spark.getBoundingClientRect();
+      const w = r.width, h = r.height;
+      sctx.clearRect(0,0,w,h);
+      if (estimateHistory.length < 2) return;
+
+      const min = Math.min(...estimateHistory);
+      const max = Math.max(...estimateHistory);
+      const range = (max - min) || 1e-6;
+
+      // target line at τ = 2π
+      const targetY = h - ((TWO_PI - min) / range) * h;
+      if (targetY >= 0 && targetY <= h) {
+        sctx.beginPath();
+        sctx.moveTo(0, targetY);
+        sctx.lineTo(w, targetY);
+        sctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        sctx.lineWidth = 1;
+        sctx.stroke();
+      }
+
+      // history polyline
+      sctx.beginPath();
+      estimateHistory.forEach((v, i) => {
+        const x = (i / (MAX_HISTORY - 1)) * w;
+        const y = h - ((v - min) / range) * h;
+        if (i === 0) sctx.moveTo(x, y); else sctx.lineTo(x, y);
+      });
+      // use your accent color if available
+      const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7c3aed';
+      sctx.strokeStyle = accent;
+      sctx.lineWidth = 2;
+      sctx.stroke();
+    }
+
+    function pushTauHistory(){
+      const t = currentTau();
+      if (!isNaN(t)) {
+        if (estimateHistory.length >= MAX_HISTORY) estimateHistory.shift();
+        estimateHistory.push(t);
+      }
+    }
 
     // ---------- Geometry helpers ----------
     function getCanvasRect() { return canvas.getBoundingClientRect(); }
@@ -405,6 +467,8 @@
       drawBoard();
       drawShots(dt);
       updateHUD();
+      pushTauHistory();
+      drawSpark();
 
       // FPS
       fpsCount++;
@@ -431,12 +495,18 @@
       timeLeft = ROUND_TIME;
       total = 0; inside = 0;
       shots.length = 0;
+      estimateHistory = [];      // clear history
       drawAll(); updateHUD();
+      drawSpark();               // clear spark
     }
+
 
     function showEndAndRecord() {
       const tau = currentTau();
       const err = currentErr();
+
+      pushTauHistory();
+      drawSpark();
 
       finalTauEl.textContent = isNaN(tau) ? '-' : tau.toFixed(6);
       finalErrEl.textContent = isNaN(err) ? '-' : err.toFixed(6);
