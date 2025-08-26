@@ -2,7 +2,7 @@ Project MonteCarloTau - scaffold
 
 Components:
 - `cpp/` - example C++ code
-- `pythonapi/` - Flask server + pybind11 C++ extension
+- `pythonapi/` - Flask server (Flask server not used for the game version)
 - `electron-app/` - Electron + TypeScript minimal visualizer
 
 Quick start (high level):
